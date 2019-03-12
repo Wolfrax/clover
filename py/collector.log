@@ -1,0 +1,40 @@
+2019-03-05 17:32:57,107 collector INFO - Start
+2019-03-05 17:32:57,402 collector INFO - Starting temp
+2019-03-05 17:32:57,544 collector INFO - Starting avg_temp
+2019-03-05 17:32:57,672 collector INFO - Starting wind_dir
+2019-03-05 17:32:57,819 collector INFO - Starting wind_speed
+2019-03-05 17:32:57,980 collector INFO - Starting rain
+2019-03-05 17:32:58,138 collector INFO - Starting rel_moisture
+2019-03-05 17:32:58,368 collector INFO - Starting snow_depth
+2019-03-05 17:32:58,620 collector INFO - Starting pressure
+2019-03-05 17:32:58,793 collector INFO - Starting lowest_cloud
+2019-03-05 17:34:03,968 collector INFO - Exiting lowest_cloud, no of stations: 82
+2019-03-05 17:34:38,306 collector INFO - Exiting rel_moisture, no of stations: 175
+2019-03-05 17:34:40,721 collector INFO - Exiting pressure, no of stations: 116
+2019-03-05 17:35:24,071 collector INFO - Exiting wind_dir, no of stations: 176
+2019-03-05 17:35:26,487 collector INFO - Exiting wind_speed, no of stations: 176
+2019-03-05 17:36:11,779 collector INFO - Exiting temp, no of stations: 220
+2019-03-05 17:36:13,308 collector INFO - Exiting avg_temp, no of stations: 215
+2019-03-05 17:37:47,899 collector INFO - Exiting snow_depth, no of stations: 229
+2019-03-05 17:38:59,442 collector INFO - Exiting rain, no of stations: 418
+2019-03-05 17:38:59,525 collector INFO - Done
+2019-03-07 21:13:23,682 collector INFO - Start
+2019-03-07 21:13:23,869 collector INFO - Starting temp
+2019-03-07 21:13:24,076 collector INFO - Starting avg_temp
+2019-03-07 21:13:24,239 collector INFO - Starting wind_dir
+2019-03-07 21:13:24,439 collector INFO - Starting wind_speed
+2019-03-07 21:13:24,621 collector INFO - Starting rain
+2019-03-07 21:13:24,793 collector INFO - Starting rel_moisture
+2019-03-07 21:13:24,973 collector INFO - Starting snow_depth
+2019-03-07 21:13:25,230 collector INFO - Starting pressure
+2019-03-07 21:13:25,430 collector INFO - Starting lowest_cloud
+2019-03-07 21:14:21,163 collector INFO - Exiting lowest_cloud, no of stations: 82
+2019-03-07 21:14:49,820 collector INFO - Exiting rel_moisture, no of stations: 174
+2019-03-07 21:14:53,330 collector INFO - Exiting pressure, no of stations: 116
+2019-03-07 21:15:31,788 collector INFO - Exiting wind_dir, no of stations: 175
+2019-03-07 21:15:33,564 collector INFO - Exiting wind_speed, no of stations: 175
+2019-03-07 21:16:17,925 collector INFO - Exiting avg_temp, no of stations: 217
+2019-03-07 21:16:18,016 collector INFO - Exiting temp, no of stations: 222
+2019-03-07 21:17:57,027 collector INFO - Exiting snow_depth, no of stations: 209
+2019-03-07 21:19:05,491 collector INFO - Exiting rain, no of stations: 436
+2019-03-07 21:19:05,581 collector INFO - Done

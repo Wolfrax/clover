@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css"
+          integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+    <script>
+        (function (i, s, o, g, r, a, m) {
+            i['GoogleAnalyticsObject'] = r;
+            i[r] = i[r] || function () {
+                (i[r].q = i[r].q || []).push(arguments)
+            }, i[r].l = 1 * new Date();
+            a = s.createElement(o),
+                m = s.getElementsByTagName(o)[0];
+            a.async = 1;
+            a.src = g;
+            m.parentNode.insertBefore(a, m)
+        })(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
+
+        ga('create', 'UA-97010459-1', 'auto');
+        ga('send', 'pageview');
+    </script>
+
+    <script src="https://d3js.org/topojson.v1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/1.1.0/d3-legend.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+
+    <!-- Open Sans & CSS -->
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:700,400,300' rel='stylesheet' type='text/css'>
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 400;
+            color: #525252;
+        }
+
+        html, body {
+            width: auto;
+            height: auto;
+        }
+
+        .popover {
+            pointer-events: none;
+        }
+    </style>
+
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col">
+            <h5 id="header1" style="color: #3B3B3B;">Sweden Weather</h5>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <h6 id="header2" style="color: #A6A6A6;"></h6>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-2">
+            <div id="descr"></div>
+        </div>
+        <div class="col-sm-2">
+		    <input type="checkbox" id="checkbox"> Stations
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <br>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm">
+            <div id="chart"></div>
+        </div>
+   </div>
+</div>
+
+<script>
+    const width = 400, height = 600;
+    var svg = d3.select("#chart").append("svg")
+        .attr("width", width)
+        .attr("height", height);
+    var projection = d3.geo.mercator()
+        .center([14.6, 62.1])  // Somewhere in the middle of Sweden, https://sv.wikipedia.org/wiki/Sveriges_geografiska_mittpunkt
+        .scale(1000)
+        .translate([width / 2, height / 2]);
+    var path = d3.geo.path()
+        .projection(projection);
+
+    function get_values(key) {
+        // loop through the list of weather station data and transform this into a list of
+        let lst = [];
+        let max_val = min_val = 0;
+
+        if (key in weather && weather[key].length > 0) {
+            max_val = min_val = weather[key][0].val;
+            for (let i = 0; i < weather[key].length; i++) {
+                if (weather[key][i].active) {
+                    // Transform the start and end coordinates according to the selected projection, in our case mercator
+                    let xy = projection([weather[key][i].lon, weather[key][i].lat]);
+                    lst.push({
+                        x: xy[0],
+                        y: xy[1],
+                        station: weather[key][i].station,
+                        val: weather[key][i].val,
+                        nr: i.toString()
+                    });
+                    max_val = Math.max(max_val, weather[key][i].val);
+                    min_val = Math.min(min_val, weather[key][i].val);
+                }
+            }
+        } else {
+            // For some reason the key is missing or have no values, set some default values to create a black map
+            lst = [{x: 0, y: 0, station: "", val: 0, nr: 0}]
+        }
+        return {key: key, val: lst, max: max_val, min: min_val, date: weather.date};
+    }
+
+    var w_keys = {
+        'Avg temp': 'avg_temp',
+        'Temp': 'temp',
+        'Rain': 'rain',
+        'Rel moisture': 'rel_moisture',
+        'Snow depth': 'snow_depth',
+        'Pressure': 'pressure',
+        'Lowest cloud': 'lowest_cloud'
+    };
+
+    var current_w_key = 'Avg temp';
+
+    // Handler for dropdown value change
+    var dropdownChange = function () {
+        current_w_key = d3.select(this).property('value');
+        let shw_stns = d3.select("#checkbox").property("checked");
+        d3.selectAll("svg > *").remove();  // Clear all previous
+        render_map(get_values(w_keys[current_w_key]), shw_stns);
+    };
+    var dropdown = d3.select("#descr")
+        .append("select")
+        .on("change", dropdownChange);
+
+    dropdown.selectAll("option")
+        .data(Object.keys(w_keys))
+        .enter().append("option")
+        .attr("value", function (d) {
+            return d;
+        })
+        .text(function (d) {
+            return d;
+        });
+
+    var checkbox_change = function() {
+        let shw_stns = d3.select("#checkbox").property("checked");
+        d3.selectAll("svg > *").remove();  // Clear all previous
+        render_map(get_values(w_keys[current_w_key]), shw_stns);
+    };
+    d3.select("#checkbox").on("change", checkbox_change);
+
+    function startup() {
+        $.ajax({
+            url: "/clover_data",
+            method: 'GET',
+            dataType: 'json',
+            cache: false
+        }).done(function (series) {
+            weather = series;
+            /*
+            'temp': '1',            # air temp, momentary value, 1/hour
+            'avg_temp': '2',        # average temp for 1 day (24 h), at 00:00
+            'wind_dir': '3',        # wind direction, average value 10 min, 1/hour
+            'wind_speed': '4',      # wind speed, average value 10 min, 1/hour
+            'rain': '5',            # rain, sum 1/day, at 06:00
+            'rel_moisture': '6',    # relative moisture, momentary value, 1/hour
+            'snow_depth': '8',      # snow depth, momentary value, 1/hour
+            'pressure': '9',        # air pressure, at sea level, momentary value, 1/hour
+            'lowest_cloud': '28',   # lowest cloud layer, momentary value, 1/hour
+            */
+            render_map(get_values(w_keys[current_w_key]), d3.select("#checkbox").property("checked"));
+        });
+
+    }
+    startup();
+
+    function render_map(values, shw_stns) {
+        d3.json("map/se.json", function (error, se) {
+            // Below we do several renderings using the mapping of Sweden in GeoJSON format, mapped to topoJSON.
+
+            // To generate color scales, refer to:
+            // http://colorbrewer2.org/, or
+            // https://gka.github.io/palettes and http://cng.seas.rochester.edu/CNG/docs/x11color.html
+            var color_range;
+            switch (values.key) {
+                case 'temp':
+                case 'avg_temp':
+                    // ALT: https://gka.github.io/palettes/#colors=DarkMagenta,DodgerBlue,LightYellow,DarkRed|steps=30|bez=0|coL=0
+                    // http://colorbrewer2.org/?type=diverging&scheme=Spectral&n=10
+                    color_range = ['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6f598','#abdda4','#66c2a5','#3288bd','#5e4fa2'].reverse();
+                    tooltip_suffix = "°";
+                    h2_text = (values.key === 'avg_temp') ? "Average temperature" : "Current temperature";
+                    values.min = (values.min < -24) ? values.min : -24;
+                    values.max = (values.max >  24) ? values.max : 24;
+                    break;
+                case 'rain':
+                    // http://colorbrewer2.org/?type=sequential&scheme=Blues&n=9
+                    // ALT: https://gka.github.io/palettes/#colors=LightYellow,Green,Navy|steps=30|bez=0|coL=1
+                    //color_range = ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'];
+
+                    // http://colorbrewer2.org/?type=sequential&scheme=Greens&n=9
+                    color_range = ['#f7fcf5','#e5f5e0','#c7e9c0','#a1d99b','#74c476','#41ab5d','#238b45','#006d2c','#00441b'];
+                    tooltip_suffix = "mm";
+                    h2_text = "Rain";
+                    values.max = (values.max > 20) ? values.max : 20;
+                    break;
+                case 'snow_depth':
+                    // http://colorbrewer2.org/?type=sequential&scheme=GnBu&n=9
+                    // ALT: https://gka.github.io/palettes/#colors=MediumSeaGreen,White,DeepSkyBlue,SteelBlue,DarkMagenta|steps=30|bez=0|coL=0
+                    color_range = ['#f7fcf0', '#e0f3db', '#ccebc5', '#a8ddb5', '#7bccc4', '#4eb3d3', '#2b8cbe', '#0868ac', '#084081'];
+                    tooltip_suffix = "m";
+                    h2_text = "Snow depth";
+                    break;
+                case 'pressure':
+                    // http://colorbrewer2.org/?type=sequential&scheme=Oranges&n=9
+                    color_range = ['#fff5eb', '#fee6ce', '#fdd0a2', '#fdae6b', '#fd8d3c', '#f16913', '#d94801', '#a63603', '#7f2704'];
+                    tooltip_suffix = "hPa";
+                    h2_text = "Pressure";
+                    break;
+                case 'lowest_cloud':
+                    // http://colorbrewer2.org/, combination of color scales
+                    // ALT: https://gka.github.io/palettes/#colors=DimGray,DeepSkyBlue|steps=30|bez=0|coL=0
+                    color_range = ['#4d4d4d', '#999999', '#e0e0e0', '#92c5de', '#0571b0'];
+                    tooltip_suffix = "m";
+                    h2_text = "Lowest cloud";
+                    break;
+                case 'rel_moisture':
+                    // http://colorbrewer2.org/?type=sequential&scheme=Blues&n=9
+                    color_range = ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'];
+                    tooltip_suffix = "%";
+                    h2_text = "Relative moisture";
+                    break;
+                default:
+                    color_range = col.temp;
+                    tooltip_suffix = "";
+                    h2_text = "WRONG LABEL"
+            }
+
+            d3.select("#header2").text(h2_text + " - " + values.date);
+
+            var colors = d3.scale.quantize()
+                .domain([values.min, values.max])
+                .range(color_range);
+
+            var legendLinear = d3.legend.color()
+                .shapeWidth(15)
+                .cells(color_range.length)
+                .orient('vertical')
+                .scale(colors);
+
+            svg.append("g")
+                .attr("class", "legendText")
+                .style("font-size", "16px")
+                .attr("transform", "translate(0, 0)");
+
+            svg.select(".legendText")
+                .call(legendLinear);
+
+            // Add a clipPath for later usage of the voronoi mapping, used for temperatures
+            svg.selectAll("clip")
+                .data(topojson.feature(se, se.objects.subunits).features)
+                .enter()
+                .append("defs")
+                .append("clipPath")
+                .attr("id", "swe-clip")
+                .append("path")
+                .attr("d", path);
+
+            // We read the vector data in topoJSON format, generated from shapefile (see readme)
+            svg.selectAll("Sweden")
+                .data(topojson.feature(se, se.objects.subunits).features)
+                .enter()
+                .append("path")
+                .attr("style", "fill: none")
+                .attr("d", path);
+
+            // This is the Voronoi mapping, we use the lat/lon positions of each weather station and calculate all the
+            // points that is closest to the lat/lon position, see https://en.wikipedia.org/wiki/Voronoi_diagram.
+            var voronoi = d3.geom.voronoi()
+                .x(function (d) {
+                    return d.x;
+                })
+                .y(function (d) {
+                    return d.y
+                });
+
+            //Show the tooltip on the hovered over element
+            function showTooltip(d) {
+                var element = d3.selectAll(".dot" + d.point.nr);
+
+                $(element).popover({
+                    placement: 'auto top', //place the tooltip above the item
+                    container: '#chart', //the name (class or id) of the container
+                    trigger: 'manual',
+                    html: true,
+                    content: function () {
+                        return "<span style='font-size: 12px; text-align: center;'>" +
+                            d.point.station + ": " +
+                            d.point.val +
+                            tooltip_suffix + "</span>";
+                    } //the content inside the tooltip
+                });
+                $(element).popover('show');
+            }
+
+            //Hide the tooltip when the mouse moves away
+            function removeTooltip() {
+                //Hide the tooltip
+                $('.popover').each(function () {
+                    $(this).remove();
+                });
+            }
+
+            // Here is the actual division of Sweden into a Voronoi diagram
+            svg.selectAll("voronoi")
+                .data(voronoi(values.val))
+                .enter()
+                .append("path")
+                .attr("clip-path", "url(#swe-clip)")  // Apply the clipPath, stay within the contours of Sweden
+                .style("pointer-events", "all")
+                .attr("fill", function (d) {
+                    return colors(d.point.val)
+                })
+                .attr("d", function (d) {
+                    return "M" + d.join("L") + "Z";
+                })
+                .attr("style", function (d) {
+                    return "stroke: " + colors(d.point.val) // Get rid of cell borders
+                })
+                .on('mouseover', showTooltip)
+                .on('mouseout', removeTooltip);
+
+            //Draw the circles when doing a voronoi
+            svg.selectAll("dots")
+                .data(values.val)
+                .enter().append("circle")
+                .attr("class", function (d, i) {
+                    return "dot" + d.nr;
+                })
+                .style("fill", function (d) {
+                    return shw_stns ? "black" : colors(d.val);
+                })
+                .attr("cx", function (d) {
+                    return d.x
+                })
+                .attr("cy", function (d) {
+                    return d.y
+                })
+                .attr("r", function (d) {
+                    return 1
+                });
+
+
+        })
+    }
+</script>
+</body>
+</html>
