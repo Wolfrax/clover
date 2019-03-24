@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="rpi2" uploadOnCheckin="71fcb1c4-4a3d-4b0a-9973-41febe0e5a29" autoUploadExternalChanges="true">
+    <serverData>
+      <paths name="rpi2">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/app/clover" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myUploadOnCheckinName" value="rpi2" />
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>
