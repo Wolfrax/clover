@@ -133,7 +133,7 @@
         'Avg temp': 'avg_temp',
         'Temp': 'temp',
         'Rain': 'rain',
-        'Rel moisture': 'rel_moisture',
+        'Rel humdity': 'rel_moisture',
         'Snow depth': 'snow_depth',
         'Pressure': 'pressure',
         'Lowest cloud': 'lowest_cloud'
@@ -190,7 +190,6 @@
             */
             render_map(get_values(w_keys[current_w_key]), d3.select("#checkbox").property("checked"));
         });
-
     }
     startup();
 
@@ -284,14 +283,6 @@
                 .append("clipPath")
                 .attr("id", "swe-clip")
                 .append("path")
-                .attr("d", path);
-
-            // We read the vector data in topoJSON format, generated from shapefile (see readme)
-            svg.selectAll("Sweden")
-                .data(topojson.feature(se, se.objects.subunits).features)
-                .enter()
-                .append("path")
-                .attr("style", "fill: none")
                 .attr("d", path);
 
             // This is the Voronoi mapping, we use the lat/lon positions of each weather station and calculate all the
