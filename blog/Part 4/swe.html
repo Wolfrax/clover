@@ -5,18 +5,22 @@
     <title>Map</title>
     <script src="//d3js.org/d3.v3.js" charset="utf-8"></script>
     <script src="//d3js.org/topojson.v1.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/1.1.0/d3-legend.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
     <script src="weather.js"></script>
 </head>
 
 <body>
+<div id="chart"></div>
 
 <script>
     // Create a svg object (1000 by 600 pixels) where we project the topoJSON data from file swe_old.json
     const width = 1000;
     const height = 600;
 
-    let svg = d3.select("body")
+    let svg = d3.select("#chart")
         .append("svg")
         .attr("width", width)
         .attr("height", height);
@@ -63,6 +67,14 @@
                     return d.y
                 });
 
+            let legendLinear = d3.legend.color()
+                .shapeWidth(15)
+                .cells(colors.length)
+                .orient('vertical')
+                .scale(colors);
+
+            svg.call(legendLinear);
+
             svg.selectAll("clip")
                 .data(topojson.feature(se, se.objects.subunits).features)
                 .enter()
@@ -71,6 +83,29 @@
                     .attr("id", "swe-clip")
                     .append("path")
                     .attr("d", path);
+
+            function showTooltip(d) {
+                let element = d3.selectAll(".dot" + d.point.nr);
+
+                $(element).popover({
+                    placement: 'auto top',
+                    container: '#chart',
+                    trigger: 'manual',
+                    html: true,
+                    content: function () {
+                        return "<span style='font-size: 12px; text-align: center;'>" +
+                            d.point.station + ": " +
+                            d.point.val + "</span>";
+                    }
+                });
+                $(element).popover('show');
+            }
+
+            function removeTooltip() {
+                $('.popover').each(function () {
+                    $(this).remove();
+                });
+            }
 
             svg.selectAll("voronoi")
                 .data(voronoi(values.val))
@@ -85,7 +120,30 @@
                     })
                     .attr("style", function (d) {
                         return "stroke: " + colors(d.point.val)
+                    })
+                    .on('mouseover', showTooltip)
+                    .on('mouseout', removeTooltip);
+
+            svg.selectAll("dots")
+                .data(values.val)
+                .enter()
+                    .append("circle")
+                    .attr("class", function (d) {
+                        return "dot" + d.nr;
+                    })
+                    .style("fill", function (d) {
+                        return "none";
+                    })
+                    .attr("cx", function (d) {
+                        return d.x
+                    })
+                    .attr("cy", function (d) {
+                        return d.y
+                    })
+                    .attr("r", function (d) {
+                        return 1
                     });
+
         });
     }
 
