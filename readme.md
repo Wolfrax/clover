@@ -6,7 +6,8 @@ Clover is a small project to
 1. Automatically collect a selection of open weather data from SMHI
 2. Display this data using an SVG map of Sweden
 
-The purpose is a [D3](https://d3js.org/) excercise using some real data. The specifics are described in blog postings.
+The purpose is a [D3](https://d3js.org/) excercise using some real data. The specifics are described in 
+[blog postings](https://www.viltstigen.se/wolfblog/2019/03/30/lets-make-a-map/).
 Use [this link](https://www.viltstigen.se/clover/index.html) to view the implementation
 
 A variation of techniques is used, deploying a client-server architecture.
