@@ -2,7 +2,7 @@
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$" />
-    <orderEntry type="jdk" jdkName="Remote Python 3.4.2 (sftp://pi@rpi2.local:22/home/pi/.virtualenvs/clover/bin/python3)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Pipenv (clover)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="topojson.v1" level="application" />
     <orderEntry type="library" name="d3.v3" level="application" />
@@ -10,8 +10,5 @@
     <orderEntry type="library" name="d3-legend" level="application" />
     <orderEntry type="library" name="jquery" level="application" />
     <orderEntry type="library" name="bootstrap" level="application" />
-  </component>
-  <component name="TestRunnerService">
-    <option name="PROJECT_TEST_RUNNER" value="Unittests" />
   </component>
 </module>

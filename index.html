@@ -126,15 +126,37 @@
             if (weather[key][stn].active) {
                 // Transform coordinates according to the selected projection
                 let xy = projection([weather[key][stn].lon, weather[key][stn].lat]);
-                lst.push({
-                    x: xy[0],
-                    y: xy[1],
-                    station: weather[key][stn].station,
-                    val: weather[key][stn].val,
-                    nr: stn.toString()
-                });
-                max_val = Math.max(max_val, weather[key][stn].val);
-                min_val = Math.min(min_val, weather[key][stn].val);
+
+                // Occasionally, a station from SMHI might occur twice but with different names,
+                // ie the lat and lon values already exists in a previous element in lst
+                // Should we add the duplicate, an undefined value will occur in the voronoi mapping later
+                // and execution will stop at:
+                //   .attr("fill", function (d) {
+                //        return colors(d.point.val)
+                //        })
+                //
+                // This is known to happen 2019-12-29 for stations "Stockholm" and "Stockholm A"
+
+                if (lst === undefined || lst.length == 0) {
+                    found = false;
+                }
+                else {
+                    const x_found = lst.find(elem => elem.x === xy[0]);
+                    const y_found = lst.find(elem => elem.y === xy[1]);
+                    found = x_found && y_found;
+                }
+
+                if (!found) {
+                    lst.push({
+                        x: xy[0],
+                        y: xy[1],
+                        station: weather[key][stn].station,
+                        val: weather[key][stn].val,
+                        nr: stn.toString()
+                    });
+                    max_val = Math.max(max_val, weather[key][stn].val);
+                    min_val = Math.min(min_val, weather[key][stn].val);
+                }
             }
         }
         return {key: key, val: lst, max: max_val, min: min_val, date: weather.date};

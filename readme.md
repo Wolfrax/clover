@@ -13,10 +13,17 @@ Use [this link](https://www.viltstigen.se/clover/index.html) to view the impleme
 A variation of techniques is used, deploying a client-server architecture.
 * D3 is used to render the weather data in a Web browser client, javascript code in `index.html`
 * Python scripts is used to collect data and dispatch this to the client in JSON format when requested
-    * `collector.py`, a threaded daemon script collecting data, configured to run from crontab once per day
     * `emitter.py`, a flask based python script, reading the data the collector-script stored and returning this 
     in JSON format.
+    * `collector.py`, a threaded daemon script collecting data, configured to run from crontab once per day
+    
+      `00 1    * * *   pi      /usr/bin/python3 /home/pi/app/clover/py/collector.py >> /var/log/clover.log 2>&1`
 
+As collector.py is logging to `/var/log/clover.log`, this file needs to be created
+
+    $ sudo touch /var/log/clover.log
+    $ sudo chown pi:pi /var/log/clover.log
+    
 A few tools is used to build the infrastructure, such as [Flask](http://flask.pocoo.org/), 
 [Gunicorn](https://gunicorn.org/), [Boostrap](https://getbootstrap.com/), [jQuery](https://jquery.com/), 
 [requests](http://docs.python-requests.org/en/master/). 
@@ -41,16 +48,24 @@ the `emitter` script is listening. The `emitter` script returns the data reading
 ## Installation
 
 Using python3, requests, flask and gunicorn in a virtual environment, on `rpi2`
+    
+    $ python3 -m venv /home/pi/.venv/clover
+    
+Make sure "/home/pi/app/clover" directory is created and populated with all project files
+    
+    $ cd /home/pi/app/clover
+    
+autoenv should be already installed and reading from ".env" file in the root directory, thus activating the 
+virtual environment for clover. Now install in this environment
 
-    $ mkvirtualenv --python=/usr/bin/python3 clover
-    $ workon clover
     (clover) $ pip3 install requests
     (clover) $ pip3 install flask
     (clover) $ pip3 install gunicorn
     
+    
 The `emitter.py` script reads from `/var/local/clover_weather.js`, softlink this
 
-    $ sudo ln -s /home/pi/app/clover/data/weather.js clover_weather.js
+    $ sudo ln -s /home/pi/app/clover/data/weather.js /var/local/clover_weather.js
     
 ## nginx configuration
 
@@ -62,7 +77,7 @@ On `rpi1`, in nginx configuration file (my case: `/etc/nginx/snippets/locations.
     
     location @clover {
         # proxy_pass http://rpi2.local; Note, a static IP address makes nginx more robust in case rpi1 is not running
-        proxy_pass http://192.168.1.51:8096;
+        proxy_pass http://192.168.1.51;
         proxy_redirect     off;
         proxy_set_header   Host $host;
         proxy_set_header   X-Real-IP $remote_addr;
@@ -103,14 +118,13 @@ On `rpi2`, open up the firewall by
 Link the clover directory in the nginx-root (`/var/www/html`) at `rpi2` by (assuming clover is installed at
 `/home/pi/app)
 
-    $ sudo ln -s /home/pi/app/clover/ clover
+    $ sudo ln -s /home/pi/app/clover/ /var/www/html/clover
 
 ## gunicorn and Flask
     
 Update [supervisor](http://supervisord.org/) with the new gunicorn server app
 
-    $ cd /etc/supervisor/conf.d
-    $ sudo ln -s /home/pi/app/clover/py/clover_gunicorn.conf clover_gunicorn.conf
+    $ sudo ln -s /home/pi/app/clover/py/clover_gunicorn.conf /etc/supervisor/conf.d/clover_gunicorn.conf
     $ sudo supervisorctl reread
     $ sudo supervisorctl update
     
@@ -128,4 +142,4 @@ If needed, debug Flask using
     $ export FLASK_DEBUG=1
     $ flask run --host=0.0.0.0 --port=8096
     
-Then try `http://rpi2.local:8096/clover` in a browser
+Then try `http://rpi2.local:8096/clover_data` in a browser

@@ -25,5 +25,5 @@
       </profile-state>
     </entry>
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.4.2 (sftp://pi@rpi2.local:22/home/pi/.virtualenvs/clover/bin/python3)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Pipenv (clover)" project-jdk-type="Python SDK" />
 </project>
