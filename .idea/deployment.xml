@@ -5,8 +5,11 @@
       <paths name="rpi2">
         <serverdata>
           <mappings>
-            <mapping deploy="/app/clover" local="$PROJECT_DIR$" />
+            <mapping deploy="app/clover" local="$PROJECT_DIR$" web="/" />
           </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/venv" />
+          </excludedPaths>
         </serverdata>
       </paths>
     </serverData>
