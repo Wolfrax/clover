@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="JavaScriptLibraryMappings">
-    <file url="file://$PROJECT_DIR$" libraries="{bootstrap, d3, d3-legend, d3.v3, jquery, topojson.v1}" />
+    <file url="file://$PROJECT_DIR$" libraries="{bootstrap, d3, d3-delaunay, d3-geo, d3-geo-voronoi, d3-legend, d3-voronoi.v1, d3.v7, jquery, topojson.v1}" />
   </component>
 </project>

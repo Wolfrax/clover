@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
-from flask import Flask
-from flask import jsonify
-import json
+from flask import Flask, render_template, send_from_directory
+import os
 
 
 __author__ = 'Wolfrax'
@@ -10,37 +9,27 @@ __author__ = 'Wolfrax'
 app = Flask(__name__)
 
 
-class CloverError(Exception):
-    status_code = 500  # Server internal error
+class ReverseProxied(object):
+    def __init__(self, app, script_name):
+        self.app = app
+        self.script_name = script_name
 
-    def __init__(self, message, status_code=None, payload=None):
-        Exception.__init__(self)
-        self.message = message
-        if status_code is not None:
-            self.status_code = status_code
-        self.payload = payload
-
-    def to_dict(self):
-        rv = dict(self.payload or ())
-        rv['message'] = self.message
-        return rv
+    def __call__(self, environ, start_response):
+        environ['SCRIPT_NAME'] = self.script_name
+        return self.app(environ, start_response)
 
 
-@app.errorhandler(CloverError)
-def handle_err(error):
-    response = jsonify(error.to_dict())
-    response.status_code = error.status_code
-    return response
+app.wsgi_app = ReverseProxied(app.wsgi_app, script_name='/clover')
 
 
-@app.route("/clover_data")
-def get_data():
-    name = "/var/local/clover_weather.js"  # Hardcoded filename
-    try:
-        with open(name, 'r') as json_file:
-            return json.dumps(json.load(json_file))
-    except (FileNotFoundError, ValueError) as msg:
-        raise CloverError('JSON decode error: {}'.format(msg))
+@app.route("/", methods=['GET'])
+def index():
+    return render_template('voronoi.html')
+
+
+@app.route('/files/<filename>', methods=['GET'])
+def download(filename):
+    return send_from_directory(directory=os.path.join(app.root_path, 'static'), path=filename)
 
 
 if __name__ == "__main__":

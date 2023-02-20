@@ -12,5 +12,21 @@
     <orderEntry type="library" name="d3-legend" level="application" />
     <orderEntry type="library" name="jquery" level="application" />
     <orderEntry type="library" name="bootstrap" level="application" />
+    <orderEntry type="library" name="d3" level="application" />
+    <orderEntry type="library" name="topojson.v1" level="application" />
+    <orderEntry type="library" name="d3.v7" level="application" />
+    <orderEntry type="library" name="d3-geo" level="application" />
+    <orderEntry type="library" name="d3-voronoi.v1" level="application" />
+    <orderEntry type="library" name="d3-delaunay" level="application" />
+    <orderEntry type="library" name="d3-geo-voronoi" level="application" />
+    <orderEntry type="library" name="d3-legend" level="application" />
+  </component>
+  <component name="TemplatesService">
+    <option name="TEMPLATE_CONFIGURATION" value="Jinja2" />
+    <option name="TEMPLATE_FOLDERS">
+      <list>
+        <option value="$MODULE_DIR$/py/templates" />
+      </list>
+    </option>
   </component>
 </module>

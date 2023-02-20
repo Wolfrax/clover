@@ -13,19 +13,14 @@ import logging
 from logging.handlers import RotatingFileHandler
 import threading
 import os
-import time
 import datetime
 
 smhi_keys = {
     'temp': '1',            # air temp, momentary value, 1/hour
-    'avg_temp': '2',        # average temp for 1 day (24 h), at 00:00
     'wind_dir': '3',        # wind direction, average value 10 min, 1/hour
     'wind_speed': '4',      # wind speed, average value 10 min, 1/hour
     'rain': '5',            # rain, sum 1/day, at 06:00
-    'rel_moisture': '6',    # relative moisture, momentary value, 1/hour
-    'snow_depth': '8',      # snow depth, momentary value, 1/hour
     'pressure': '9',        # air pressure, at sea level, momentary value, 1/hour
-    'lowest_cloud': '28',   # lowest cloud layer, momentary value, 1/hour
 }
 
 
@@ -46,7 +41,7 @@ class smhi_reader(threading.Thread):
 
 class smhi:
     def __init__(self):
-        self.url = "http://opendata-download-metobs.smhi.se/api.json"  # Root for SMHI REST API
+        self.url = "https://opendata-download-metobs.smhi.se/api.json"  # Root for SMHI REST API
 
         try:
             api = requests.get(self.url).json()
@@ -117,24 +112,12 @@ def store(l):
     Create a file such as "2019-01-18.js" and copy the file to 'weather.js'
     """
     os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
-    path = "../data/"
-    name = path + l["date"] + ".js"
+    path = "./static/"
+    name = path + l["date"] + ".json"
     with open(name, 'w') as outfile:
         json.dump(l, outfile)
         outfile.close()
-        shutil.copy(name, path + "weather.js")
-
-    # Remove all files older than 7 days
-    now = time.time()
-    cutoff = now - (7 * 86400)
-
-    files = os.listdir(path)
-    for f in files:
-        if os.path.isfile(path + f):
-            t = os.stat(path + f)
-            c = t.st_mtime  # Modification time
-            if c < cutoff:
-                os.remove(path + f)
+        shutil.move(name, path + "weather.json")
 
 
 if __name__ == "__main__":
