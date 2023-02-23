@@ -84,7 +84,7 @@
                 const height = 610;
                 const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
                 let points = values(data[0], 'temp');
-                let colorScale = d3.scaleSequential(d3.interpolateHslLong("blue", "red")).domain([points.min, points.max]);
+                let colorScale = d3.scaleSequential().interpolator(d3.interpolateSpectral).domain([points.max, points.min]);
                 let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
 
                 let projection = d3.geoEqualEarth();
