@@ -73,7 +73,13 @@ class smhi:
             for i, stn in enumerate(stations["station"]):
                 elem = {}
                 ind1 = next(i for (i, d) in enumerate(stn["link"]) if d["type"] == "application/json")
-                lnk = requests.get(stn["link"][ind1]["href"]).json()
+
+                try:
+                    lnk = requests.get(stn["link"][ind1]["href"]).json()
+                except json.decoder.JSONDecodeError:
+                    logging.warning("Error decoding {} for {}".format(key, stn["name"]))
+                    continue
+
                 ind2 = next((i for (i, d) in enumerate(lnk["period"]) if d["key"] == "latest-day"), None)
                 if ind2 is not None:
                     lnk = lnk["period"][ind2]
@@ -145,7 +151,7 @@ if __name__ == "__main__":
     for t in threads:
         t.join()  # Wait for all reading threads to terminate
 
-    weather_data = {'date': datetime.date.today().isoformat()}
+    weather_data = {'date': datetime.datetime.now().isoformat()}
     i = 0
     for k, v in smhi_keys.items():
         weather_data[k] = threads[i].get_data()

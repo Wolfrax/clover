@@ -73,9 +73,8 @@
             $.get('clover/files/weather.json'),
             $.get('clover/files/se.json')).done(
             function (data, se) {
-                let date = new Date(data[0].temp[0].updated + 60 * 60000);  // +1 hour
-                let time = " " + date.getHours() + ':' + ("0" + date.getMinutes()).substring(-2) + ':' + ("0" + date.getSeconds()).substring(-2);
-                d3.select("#header").text("Temperatures " + data[0].date + time);
+                let date = new Date(data[0].date);
+                d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
                 let height = width = document.getElementById('map').clientWidth;
                 const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
