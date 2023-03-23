@@ -76,34 +76,33 @@ class smhi:
 
                 try:
                     lnk = requests.get(stn["link"][ind1]["href"]).json()
+                    ind2 = next((i for (i, d) in enumerate(lnk["period"]) if d["key"] == "latest-day"), None)
+                    if ind2 is not None:
+                        lnk = lnk["period"][ind2]
+                        ind3 = next(i for (i, d) in enumerate(lnk["link"]) if d["type"] == "application/json")
+                        lnk = requests.get(lnk["link"][ind3]["href"]).json()
+                        ind4 = next(i for (i, d) in enumerate(lnk["link"]) if d["type"] == "application/json")
+                        # Note, no key for data, hence always 0
+                        lnk = requests.get(lnk["data"][0]["link"][ind4]["href"]).json()
+                        if lnk["value"] is not None and stn['active'] is True:
+                            elem["station"] = stn["name"]
+                            elem["updated"] = stn["updated"]
+                            elem["lon"] = stn["longitude"]
+                            elem["lat"] = stn["latitude"]
+                            elem["active"] = stn["active"]
+                            try:
+                                # NB if we take the last element we get the latest value,
+                                # the first element (0) is the oldest, the last is the youngest (in case we have a list)
+                                elem["val"] = float(lnk["value"][-1]["value"])
+                            except ValueError:
+                                elem[key] = 0
+                                elem["active"] = False  # Mark as inactive as we couldn't parse the value
+                                logger.info("{}: {}".format(stn['name'], lnk["value"][0]["value"]))
+
+                            lst.append(elem)
                 except json.decoder.JSONDecodeError:
                     logging.warning("Error decoding {} for {}".format(key, stn["name"]))
                     continue
-
-                ind2 = next((i for (i, d) in enumerate(lnk["period"]) if d["key"] == "latest-day"), None)
-                if ind2 is not None:
-                    lnk = lnk["period"][ind2]
-                    ind3 = next(i for (i, d) in enumerate(lnk["link"]) if d["type"] == "application/json")
-                    lnk = requests.get(lnk["link"][ind3]["href"]).json()
-                    ind4 = next(i for (i, d) in enumerate(lnk["link"]) if d["type"] == "application/json")
-                    # Note, no key for data, hence always 0
-                    lnk = requests.get(lnk["data"][0]["link"][ind4]["href"]).json()
-                    if lnk["value"] is not None and stn['active'] is True:
-                        elem["station"] = stn["name"]
-                        elem["updated"] = stn["updated"]
-                        elem["lon"] = stn["longitude"]
-                        elem["lat"] = stn["latitude"]
-                        elem["active"] = stn["active"]
-                        try:
-                            # NB if we take the last element we get the latest value,
-                            # the first element (0) is the oldest, the last is the youngest (in case we have a list)
-                            elem["val"] = float(lnk["value"][-1]["value"])
-                        except ValueError:
-                            elem[key] = 0
-                            elem["active"] = False  # Mark as inactive as we couldn't parse the value
-                            logger.info("{}: {}".format(stn['name'], lnk["value"][0]["value"]))
-
-                        lst.append(elem)
         except requests.exceptions.RequestException as e:
             logger.error(e)
             sys.exit(1)
