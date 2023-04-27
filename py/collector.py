@@ -94,10 +94,13 @@ class smhi:
                                 # NB if we take the last element we get the latest value,
                                 # the first element (0) is the oldest, the last is the youngest (in case we have a list)
                                 elem["val"] = float(lnk["value"][-1]["value"])
-                            except ValueError:
+                            except (ValueError, IndexError):
                                 elem[key] = 0
                                 elem["active"] = False  # Mark as inactive as we couldn't parse the value
-                                logger.info("{}: {}".format(stn['name'], lnk["value"][0]["value"]))
+                                if lnk["value"]:
+                                    logger.info("{}: {}".format(stn['name'], lnk["value"][0]["value"]))
+                                else:
+                                    logger.info(f"{stn['name']}: lnk['value'] is empty ({lnk['value']})")
 
                             lst.append(elem)
                 except json.decoder.JSONDecodeError:
