@@ -17,10 +17,10 @@ import datetime
 
 smhi_keys = {
     'temp': '1',            # air temp, momentary value, 1/hour
-    'wind_dir': '3',        # wind direction, average value 10 min, 1/hour
-    'wind_speed': '4',      # wind speed, average value 10 min, 1/hour
-    'rain': '5',            # rain, sum 1/day, at 06:00
-    'pressure': '9',        # air pressure, at sea level, momentary value, 1/hour
+#    'wind_dir': '3',        # wind direction, average value 10 min, 1/hour
+#    'wind_speed': '4',      # wind speed, average value 10 min, 1/hour
+#    'rain': '5',            # rain, sum 1/day, at 06:00
+#    'pressure': '9',        # air pressure, at sea level, momentary value, 1/hour
 }
 
 
