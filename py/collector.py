@@ -44,7 +44,7 @@ class smhi:
         self.url = "https://opendata-download-metobs.smhi.se/api.json"  # Root for SMHI REST API
 
         try:
-            api = requests.get(self.url).json()
+            api = requests.get(self.url, timeout=10).json()
 
             # The "next("... construct is used several times below to keep the code short
             # It is equivalent to:
@@ -56,59 +56,69 @@ class smhi:
             ind1 = next(i for (i, d) in enumerate(api["version"]) if d["key"] == "latest")
             ind2 = next(i for (i, d) in enumerate(api["version"][ind1]["link"]) if d["type"] == "application/json")
             self.resources = requests.get(api["version"][ind1]["link"][ind2]["href"]).json()
-        except requests.exceptions.RequestException as e:
+        except (requests.exceptions.RequestException, requests.exceptions.ConnectTimeout) as e:
             logger.error(e)
-            sys.exit(1)
+            sys.exit(0)
 
     def get(self, key):
         logger.info("Starting {}".format(key))
+
+        # Try to get the indicated resource from the SMHI latest api (setup at initialization)
+        # We only handle a pre-defined subset of parameters
+        ind1 = next(i for (i, d) in enumerate(self.resources["resource"]) if d["key"] == smhi_keys[key])
+        ind2 = next(i for (i, d) in enumerate(self.resources["resource"][ind1]["link"]) if d["type"] == "application/json")
+
         try:
-            # Try to get the indicated resource from the SMHI latest api (setup at initialization)
-            # We only handle a pre-defined subset of parameters
-            ind1 = next(i for (i, d) in enumerate(self.resources["resource"]) if d["key"] == smhi_keys[key])
-            ind2 = next(i for (i, d) in enumerate(self.resources["resource"][ind1]["link"]) if d["type"] == "application/json")
-
-            stations = requests.get(self.resources["resource"][ind1]["link"][ind2]["href"]).json()
-            lst = []
-            for i, stn in enumerate(stations["station"]):
-                elem = {}
-                ind1 = next(i for (i, d) in enumerate(stn["link"]) if d["type"] == "application/json")
-
-                try:
-                    lnk = requests.get(stn["link"][ind1]["href"]).json()
-                    ind2 = next((i for (i, d) in enumerate(lnk["period"]) if d["key"] == "latest-day"), None)
-                    if ind2 is not None:
-                        lnk = lnk["period"][ind2]
-                        ind3 = next(i for (i, d) in enumerate(lnk["link"]) if d["type"] == "application/json")
-                        lnk = requests.get(lnk["link"][ind3]["href"]).json()
-                        ind4 = next(i for (i, d) in enumerate(lnk["link"]) if d["type"] == "application/json")
-                        # Note, no key for data, hence always 0
-                        lnk = requests.get(lnk["data"][0]["link"][ind4]["href"]).json()
-                        if lnk["value"] is not None and stn['active'] is True:
-                            elem["station"] = stn["name"]
-                            elem["updated"] = stn["updated"]
-                            elem["lon"] = stn["longitude"]
-                            elem["lat"] = stn["latitude"]
-                            elem["active"] = stn["active"]
-                            try:
-                                # NB if we take the last element we get the latest value,
-                                # the first element (0) is the oldest, the last is the youngest (in case we have a list)
-                                elem["val"] = float(lnk["value"][-1]["value"])
-                            except (ValueError, IndexError):
-                                elem[key] = 0
-                                elem["active"] = False  # Mark as inactive as we couldn't parse the value
-                                if lnk["value"]:
-                                    logger.info("{}: {}".format(stn['name'], lnk["value"][0]["value"]))
-                                else:
-                                    logger.info(f"{stn['name']}: lnk['value'] is empty ({lnk['value']})")
-
-                            lst.append(elem)
-                except json.decoder.JSONDecodeError:
-                    logging.warning("Error decoding {} for {}".format(key, stn["name"]))
-                    continue
-        except requests.exceptions.RequestException as e:
+            stations = requests.get(self.resources["resource"][ind1]["link"][ind2]["href"], timeout=10).json()
+        except (requests.exceptions.RequestException,
+                requests.exceptions.ConnectTimeout,
+                requests.exceptions.ReadTimeout) as e:
             logger.error(e)
-            sys.exit(1)
+            return None
+
+        lst = []
+        for i, stn in enumerate(stations["station"]):
+            logger.info(f"{stn['name']}")
+
+            elem = {}
+            ind1 = next(i for (i, d) in enumerate(stn["link"]) if d["type"] == "application/json")
+
+            try:
+                lnk = requests.get(stn["link"][ind1]["href"], timeout=10).json()
+                ind2 = next((i for (i, d) in enumerate(lnk["period"]) if d["key"] == "latest-day"), None)
+                if ind2 is not None:
+                    lnk = lnk["period"][ind2]
+                    ind3 = next(i for (i, d) in enumerate(lnk["link"]) if d["type"] == "application/json")
+                    lnk = requests.get(lnk["link"][ind3]["href"]).json()
+                    ind4 = next(i for (i, d) in enumerate(lnk["link"]) if d["type"] == "application/json")
+                    # Note, no key for data, hence always 0
+                    lnk = requests.get(lnk["data"][0]["link"][ind4]["href"], timeout=10).json()
+
+                    if lnk["value"] is not None and stn['active'] is True:
+                        elem["station"] = stn["name"]
+                        elem["updated"] = stn["updated"]
+                        elem["lon"] = stn["longitude"]
+                        elem["lat"] = stn["latitude"]
+                        elem["active"] = stn["active"]
+                        try:
+                            # NB if we take the last element we get the latest value,
+                            # the first element (0) is the oldest, the last is the youngest (in case we have a list)
+                            elem["val"] = float(lnk["value"][-1]["value"])
+                        except (ValueError, IndexError):
+                            elem[key] = 0
+                            elem["active"] = False  # Mark as inactive as we couldn't parse the value
+                            if lnk["value"]:
+                                logger.info("{}: {}".format(stn['name'], lnk["value"][0]["value"]))
+                            else:
+                                logger.info(f"{stn['name']}: lnk['value'] is empty ({lnk['value']})")
+
+                        lst.append(elem)
+            except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) :
+                logger.info(f"Time out: {stn['name']}")
+                continue
+            except json.decoder.JSONDecodeError:
+                logging.warning("Error decoding {} for {}".format(key, stn["name"]))
+                continue
 
         logger.info("Exiting {}, no of stations: {}".format(key, len(lst)))
 
@@ -156,7 +166,9 @@ if __name__ == "__main__":
     weather_data = {'date': datetime.datetime.now().isoformat()}
     i = 0
     for k, v in smhi_keys.items():
-        weather_data[k] = threads[i].get_data()
+        data = threads[i].get_data()
+        if data is not None:
+            weather_data[k] = data
         i += 1
 
     store(weather_data)

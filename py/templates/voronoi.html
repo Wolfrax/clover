@@ -73,12 +73,17 @@
             $.get('clover/files/weather.json'),
             $.get('clover/files/se.json')).done(
             function (data, se) {
+                const key = 'temp'
+                if (!key in data[0]) {
+                    console.log(data)
+                    return
+                }
                 let date = new Date(data[0].date);
                 d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
                 let height = width = document.getElementById('map').clientWidth;
                 const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
-                let points = values(data[0], 'temp');
+                let points = values(data[0], key);
                 let colorScale = d3.scaleSequential().interpolator(d3.interpolateSpectral).domain([points.max, points.min]);
                 let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
 

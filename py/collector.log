@@ -38,3 +38,12 @@
 2019-03-07 21:17:57,027 collector INFO - Exiting snow_depth, no of stations: 209
 2019-03-07 21:19:05,491 collector INFO - Exiting rain, no of stations: 436
 2019-03-07 21:19:05,581 collector INFO - Done
+2023-06-10 12:39:05,079 collector INFO - Start
+2023-06-10 12:39:05,272 collector INFO - Starting temp
+2023-06-10 12:39:49,148 collector INFO - Härnösand: lnk['value'] is empty ([])
+2023-06-10 12:40:05,879 collector INFO - Kärna: lnk['value'] is empty ([])
+2023-06-10 12:40:12,165 collector INFO - Luleå-Bergnäset: lnk['value'] is empty ([])
+2023-06-10 12:40:48,331 collector INFO - Stora Spånsberget A: lnk['value'] is empty ([])
+2023-06-10 12:41:21,955 collector INFO - Åtorp: lnk['value'] is empty ([])
+2023-06-10 12:41:27,541 collector INFO - Exiting temp, no of stations: 246
+2023-06-10 12:41:27,549 collector INFO - Done
