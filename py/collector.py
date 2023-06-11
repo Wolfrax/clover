@@ -78,7 +78,7 @@ class smhi:
 
         lst = []
         for i, stn in enumerate(stations["station"]):
-            logger.info(f"{stn['name']}")
+            logger.debug(f"{stn['name']}")
 
             elem = {}
             ind1 = next(i for (i, d) in enumerate(stn["link"]) if d["type"] == "application/json")
