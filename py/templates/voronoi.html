@@ -44,8 +44,16 @@
 
 <script>
     function values(series, key) {
-        let max_val = series[key][0].val;
-        let min_val = series[key][0].val;
+        let max_val;
+        let min_val;
+        series[key].every(v => {
+            if (v.active) {
+                max_val = v.val;
+                min_val = v.val;
+                return false;
+            }
+            return true;
+        });
         let stations = [];
 
         series[key].forEach(function (p) {
