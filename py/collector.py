@@ -80,6 +80,10 @@ class smhi:
         for i, stn in enumerate(stations["station"]):
             logger.debug(f"{stn['name']}")
 
+            if stn["name"] == "SMHI TEST 1":
+                # Skip test station by SMHI
+                continue
+
             elem = {}
             ind1 = next(i for (i, d) in enumerate(stn["link"]) if d["type"] == "application/json")
 
