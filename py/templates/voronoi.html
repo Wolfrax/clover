@@ -103,7 +103,9 @@
                 let svg = d3.select("#map")
                     .append("svg")
                     .style("width", width)
-                    .style("height", height);
+                    .style("height", height)
+                    .style("style", "overflow: visible");
+                    //<svg width="1000" height="600" style="overflow: visible;">
 
                 svg.append('g').selectAll('path')
                     .data(geojson_swe.features)
@@ -151,3 +153,4 @@
 
 </body>
 </html>
+
