@@ -100,8 +100,9 @@
 
                 let svg = d3.select("#map")
                     .append("svg")
-                    .style("width", width)
-                    .style("height", height);
+                    .attr("width", width)
+                    .attr("height", height);
+
 
                 svg.append('g').selectAll('path')
                     .data(geojson_swe.features)
