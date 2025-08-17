@@ -30,7 +30,7 @@
     <hr>
 
     <div class='row'>
-        <div class="col-xs-12 col-lg-6" id="map"></div>
+        <div class="col-12" id="map"></div>
     </div>
 
     <br><br>
@@ -54,31 +54,47 @@ function values(series, key) {
         return true;
     });
     let stations = [];
+
     series[key].forEach(function (p) {
         const lon = Math.round(p.lon * 100) / 100;
         const lat = Math.round(p.lat * 100) / 100;
         let found = stations.find(elem => elem.lon === lon) && stations.find(elem => elem.lat === lat);
         if (!found && p.active) {
-            stations.push({ lon: lon, lat: lat, station: p.station, val: p.val });
+            stations.push({
+                lon: lon,
+                lat: lat,
+                station: p.station,
+                val: p.val,
+            });
             max_val = Math.max(max_val, p.val);
             min_val = Math.min(min_val, p.val);
         }
     });
-    return { key: key, stns: stations, max: max_val, min: min_val, date: series.date };
+    return {key: key, stns: stations, max: max_val, min: min_val, date: series.date};
 }
 
 function drawMap() {
+    $("#map").empty();
+
     $.when(
         $.get('clover/files/weather.json'),
         $.get('clover/files/se.json')
     ).done(function (data, se) {
         const key = 'temp';
-        if (!(key in data[0])) return;
+        if (!(key in data[0])) {
+            console.log(data);
+            return;
+        }
         let date = new Date(data[0].date);
         d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
+        // Responsive map size
+        let screenWidth = window.innerWidth;
         let containerWidth = document.getElementById('map').clientWidth;
         let mapHeight = containerWidth;
+
+        // Margin for legend
+        const mapMargin = screenWidth < 600 ? 50 : 80;
 
         const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
         let points = values(data[0], key);
@@ -86,18 +102,15 @@ function drawMap() {
         let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
 
         let projection = d3.geoEqualEarth();
-        projection.fitSize([containerWidth, mapHeight], geojson_swe);
+        projection.fitSize([containerWidth, mapHeight - mapMargin], geojson_swe);
 
         let path = d3.geoPath().projection(projection);
-
-        d3.select("#map").selectAll("*").remove(); // Clear previous SVG
 
         let svg = d3.select("#map")
             .append("svg")
             .attr("width", containerWidth)
             .attr("height", mapHeight);
 
-        // Sweden map
         svg.append('g').selectAll('path')
             .data(geojson_swe.features)
             .join('path')
@@ -122,45 +135,39 @@ function drawMap() {
             .append("path")
             .attr("clip-path", "url(#swe-clip)")
             .attr("d", path)
-            .style('fill', (_, i) => colorScale(points.stns[i].val))
+            .style('fill', function (_, i) { return colorScale(points.stns[i].val); })
             .append("title")
-            .text((_, i) => points.stns[i].station + " Temp: " + points.stns[i].val);
+            .text(function (_, i) { return points.stns[i].station + " Temp: " + points.stns[i].val; });
 
-        // Responsive legend
+        // Legend placement
+        let legendCells = screenWidth < 600 ? Math.min(5, points.stns.length) : 10;
+        let legendOrientation = screenWidth < 600 ? "horizontal" : "vertical";
+        let fontSize = screenWidth < 600 ? Math.max(8, Math.floor(screenWidth / 40)) + "px" : "12px";
+
         let legend = d3.legendColor()
             .labelFormat(d3.format(".0f"))
-            .cells(10)
-            .scale(colorScale);
+            .cells(legendCells)
+            .scale(colorScale)
+            .orient(legendOrientation);
 
-        let legendGroup = svg.append("g").attr("class", "legend");
+        let legendX = screenWidth < 600 ? 10 : containerWidth - 40;
+        let legendY = screenWidth < 600 ? mapHeight - mapMargin + 10 : 20;
 
-        function updateLegend() {
-            let screenWidth = window.innerWidth;
-            let legendX, legendY, fontSize;
-            if (screenWidth >= 768) {
-                // Desktop/tablet: place legend to the right of map
-                legendX = containerWidth - 100; // move slightly inside map to avoid clipping
-                legendY = 20;
-                legend.orient("vertical");
-                fontSize = "12px";
-            } else {
-                // Mobile: place legend below map
-                legendX = containerWidth / 2 - 50; // center below map
-                legendY = mapHeight + 10;
-                legend.orient("horizontal");
-                fontSize = Math.max(8, Math.floor(screenWidth / 40)) + "px";
-            }
+        let legendGroup = svg.append("g")
+            .attr("class", "legend")
+            .attr("transform", `translate(${legendX}, ${legendY})`)
+            .call(legend);
 
-            legendGroup.attr("transform", `translate(${legendX}, ${legendY})`).call(legend);
-            legendGroup.selectAll("text").style("font-size", fontSize);
-        }
-
-        updateLegend();
-        window.addEventListener("resize", drawMap); // redraw map and reposition legend
+        legendGroup.selectAll("text").style("font-size", fontSize);
     });
 }
 
-$(document).ready(drawMap);
+// Initial draw
+drawMap();
+
+// Redraw on resize
+window.addEventListener("resize", drawMap);
+
 </script>
 </body>
 </html>
