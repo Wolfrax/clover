@@ -89,8 +89,10 @@ $(document).ready(function () {
         d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
         // Map dimensions
-        let width = document.getElementById('map').clientWidth;
-        let height = width; // square map
+        let mapWidth = document.getElementById('map').clientWidth;
+        let mapHeight = mapWidth; // square map
+        let legendWidth = 120;    // extra space for legend
+        let svgWidth = mapWidth + legendWidth;
 
         const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
         let points = values(data[0], key);
@@ -104,18 +106,22 @@ $(document).ready(function () {
             .y(d => d.lat);
 
         let projection = d3.geoEqualEarth();
-        projection.fitSize([width, height], geojson_swe);
+        projection.fitSize([mapWidth, mapHeight], geojson_swe);
 
         let path = d3.geoPath().projection(projection);
 
-        // Create SVG with proper attributes
+        // Create SVG with extra width for legend
         let svg = d3.select("#map")
             .append("svg")
-            .attr("width", width)
-            .attr("height", height);
+            .attr("width", svgWidth)
+            .attr("height", mapHeight);
+
+        // Group to center the map horizontally
+        let mapGroup = svg.append('g')
+            .attr("transform", `translate(${(svgWidth - mapWidth - legendWidth)/2},0)`);
 
         // Draw Sweden outline
-        svg.append('g').selectAll('path')
+        mapGroup.append('g').selectAll('path')
             .data(geojson_swe.features)
             .join('path')
             .attr('d', path)
@@ -123,7 +129,7 @@ $(document).ready(function () {
             .style("stroke", "#333");
 
         // Clip path for voronoi
-        svg.append('defs')
+        mapGroup.append('defs')
             .selectAll("clip")
             .data(geojson_swe.features)
             .enter()
@@ -133,7 +139,7 @@ $(document).ready(function () {
             .attr("d", path);
 
         // Voronoi cells
-        svg.append('g').selectAll("voronoi")
+        mapGroup.append('g').selectAll("voronoi")
             .data(voronoi(points.stns).polygons().features)
             .enter()
             .append("path")
@@ -143,18 +149,21 @@ $(document).ready(function () {
             .append("title")
             .text((_, i) => points.stns[i].station + " Temp: " + points.stns[i].val);
 
-        // Legend outside the map
+        // Legend outside the map area but vertically centered
         let legend = d3.legendColor()
             .labelFormat(d3.format(".0f"))
             .cells(10)
             .scale(colorScale);
 
-        // Append legend in the right margin outside the map
+        // Estimate legend height (approximate)
+        let legendHeight = 200; // adjust if needed
+
         svg.append("g")
-            .attr("transform", `translate(${width + 20}, 40)`) // 20px to the right of the map
+            .attr("transform", `translate(${mapWidth + 20}, ${(mapHeight - legendHeight)/2})`)
             .call(legend);
     });
 });
+
 
     /* OLD CODE BELOW, NOT USED ANYMORE
 
