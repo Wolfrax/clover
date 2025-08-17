@@ -1,28 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Swe Voronoi</title>
+<title>Swe Voronoi</title>
 
-    <link rel="shortcut icon" href="https://www.viltstigen.se/favicon.png">
+<link rel="shortcut icon" href="https://www.viltstigen.se/favicon.png">
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://d3js.org/d3-voronoi.v1.min.js"></script>
-    <script src="https://d3js.org/topojson.v1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3-geo-voronoi@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3-geo@3"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"
-            integrity="sha512-wNH6xsp2n8CfB91nrBtfc4sfLwYPBMjSWVUwQOp60AYYXH6i8yCwuKFZ4rgK2i6pQek/b+bSyR7b01/922IBzQ=="
-            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/topojson.v1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo-voronoi@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"
+        integrity="sha512-wNH6xsp2n8CfB91nrBtfc4sfLwYPBMjSWVUwQOp60AYYXH6i8yCwuKFZ4rgK2i6pQek/b+bSyR7b01/922IBzQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
+      integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+
+<style>
+  #map { width: 100%; max-width: 800px; margin: auto; }
+  .tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: white;
+      border: 1px solid #333;
+      padding: 5px;
+      font-size: 12px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+  }
+  #legend-container { text-align: center; margin-top: 10px; }
+</style>
+
 </head>
-
 <body>
 <div class="container text-center">
     <h2 id="header"></h2>
@@ -30,8 +44,9 @@
     <hr>
 
     <div class='row'>
-        <div class="col-xs-12 col-lg-6" id="map"></div>
+        <div class="col-12" id="map"></div>
     </div>
+    <div id="legend-container"></div>
 
     <br><br>
     <hr>
@@ -41,6 +56,8 @@
         </p>
     </footer>
 </div>
+
+<div class="tooltip" id="tooltip"></div>
 
 <script>
 function values(series, key) {
@@ -54,7 +71,6 @@ function values(series, key) {
         return true;
     });
     let stations = [];
-
     series[key].forEach(function (p) {
         const lon = Math.round(p.lon * 100) / 100;
         const lat = Math.round(p.lat * 100) / 100;
@@ -86,23 +102,15 @@ $(document).ready(function () {
         let date = new Date(data[0].date);
         d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
+        let containerWidth = document.getElementById('map').clientWidth;
+        let mapHeight = containerWidth * 0.8; // fit full map
+
         const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
         let points = values(data[0], key);
 
         let colorScale = d3.scaleSequential().interpolator(d3.interpolateSpectral).domain([points.max, points.min]);
-        let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
 
         let projection = d3.geoEqualEarth();
-
-        // Map container sizing
-        const legendWidth = 150;
-        let containerWidth = document.getElementById('map').clientWidth;
-        let containerHeight = window.innerHeight * 0.8; // 80% of viewport height
-        if (window.innerWidth >= 800) {
-            containerWidth = Math.min(containerWidth, window.innerWidth - legendWidth - 20);
-        }
-        let mapHeight = containerHeight;
-
         projection.fitSize([containerWidth, mapHeight], geojson_swe);
         let path = d3.geoPath().projection(projection);
 
@@ -111,6 +119,7 @@ $(document).ready(function () {
             .attr("width", containerWidth)
             .attr("height", mapHeight);
 
+        // Draw Sweden
         svg.append('g').selectAll('path')
             .data(geojson_swe.features)
             .join('path')
@@ -118,7 +127,10 @@ $(document).ready(function () {
             .style("fill", "#eee")
             .style("stroke", "#333");
 
-        // ClipPath for Voronoi
+        // Voronoi diagram clipped to Sweden
+        let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
+        let polygons = voronoi(points.stns).polygons().features;
+
         svg.append('defs')
             .selectAll("clipPath")
             .data(geojson_swe.features)
@@ -128,96 +140,67 @@ $(document).ready(function () {
             .append("path")
             .attr("d", path);
 
-        // Voronoi diagram
+        let tooltip = d3.select("#tooltip");
+
         svg.append('g').selectAll("voronoi")
-            .data(voronoi(points.stns).polygons().features)
+            .data(polygons)
             .enter()
             .append("path")
             .attr("clip-path", "url(#swe-clip)")
             .attr("d", path)
-            .style('fill', function (_, i) { return colorScale(points.stns[i].val); })
-            .style('stroke', '#999')
-            .on("mouseover", function (event, d) {
-                let idx = points.stns.findIndex(s => s.lon === d.properties.site[0] && s.lat === d.properties.site[1]);
-                tooltip.transition().duration(200).style("opacity", 0.9);
-                tooltip.html(points.stns[idx].station + "<br>Temp: " + points.stns[idx].val)
-                    .style("left", (event.pageX + 5) + "px")
-                    .style("top", (event.pageY - 28) + "px");
+            .style('fill', (_, i) => colorScale(points.stns[i].val))
+            .style('stroke', 'none')
+            .on("mouseover", function (event, d, i) {
+                let index = polygons.indexOf(d);
+                tooltip.style("opacity", 1)
+                    .html(points.stns[index].station + "<br>Temp: " + points.stns[index].val)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY + 10) + "px");
+            })
+            .on("mousemove", function (event, d) {
+                tooltip.style("left", (event.pageX + 10) + "px")
+                       .style("top", (event.pageY + 10) + "px");
             })
             .on("mouseout", function () {
-                tooltip.transition().duration(500).style("opacity", 0);
+                tooltip.style("opacity", 0);
+            })
+            .on("touchstart", function (event, d) { 
+                event.preventDefault();
+                let index = polygons.indexOf(d);
+                tooltip.style("opacity", 1)
+                    .html(points.stns[index].station + "<br>Temp: " + points.stns[index].val)
+                    .style("left", (event.touches[0].pageX + 10) + "px")
+                    .style("top", (event.touches[0].pageY + 10) + "px");
+            })
+            .on("touchend", function () {
+                tooltip.style("opacity", 0);
             });
 
-        // Tooltip div
-        let tooltip = d3.select("body").append("div")
-            .attr("class", "tooltip")
-            .style("position", "absolute")
-            .style("text-align", "center")
-            .style("width", "auto")
-            .style("padding", "5px")
-            .style("font", "12px sans-serif")
-            .style("background", "white")
-            .style("border", "1px solid #ccc")
-            .style("border-radius", "4px")
-            .style("pointer-events", "none")
-            .style("opacity", 0);
-
-        // Legend placement
-        let legendX, legendY, legendCells, legendOrientation;
-        let screenWidth = window.innerWidth;
-
-        if (screenWidth >= 800) { // desktop
-            legendX = containerWidth + 10; // right of map
-            legendY = 20;
-            legendCells = 10;
-            legendOrientation = "vertical";
-        } else { // tablet/mobile
-            legendX = 0;
-            legendY = mapHeight + 30; // below map
-            legendCells = Math.min(5, points.stns.length);
-            legendOrientation = "horizontal";
-        }
+        // Legend as separate div
+        let legendDiv = d3.select("#legend-container");
+        let legendSvg = legendDiv.append("svg")
+            .attr("width", containerWidth)
+            .attr("height", 50);
 
         let legend = d3.legendColor()
             .labelFormat(d3.format(".0f"))
-            .cells(legendCells)
+            .cells(10)
             .scale(colorScale)
-            .orient(legendOrientation);
+            .orient("horizontal");
 
-        let legendGroup = svg.append("g")
+        legendSvg.append("g")
             .attr("class", "legend")
-            .attr("transform", `translate(${legendX}, ${legendY})`)
+            .attr("transform", "translate(20,10)")
             .call(legend);
 
-        legendGroup.selectAll("text").style("font-size", "12px");
-
-        // Responsive map and legend
+        // Responsive resizing
         window.addEventListener("resize", () => {
             let w = document.getElementById('map').clientWidth;
-            let h = window.innerHeight * 0.8;
-            if (window.innerWidth >= 800) {
-                w = Math.min(w, window.innerWidth - legendWidth - 20);
-            }
-            svg.attr("width", w).attr("height", h);
-            projection.fitSize([w, h], geojson_swe);
-            svg.selectAll("path").attr("d", path);
-
-            // Update legend placement
-            screenWidth = window.innerWidth;
-            if (screenWidth >= 800) {
-                legendGroup.attr("transform", `translate(${w + 10}, 20)`);
-            } else {
-                legendGroup.attr("transform", `translate(0, ${h + 30})`);
-            }
+            svg.attr("width", w).attr("height", w * 0.8);
+            legendSvg.attr("width", w);
         });
     });
 });
 </script>
-
-<style>
-.tooltip {
-    box-shadow: 0 0 5px #888;
-}
-</style>
 </body>
 </html>
