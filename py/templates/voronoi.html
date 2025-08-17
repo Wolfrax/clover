@@ -54,41 +54,32 @@ function values(series, key) {
         return true;
     });
     let stations = [];
-
     series[key].forEach(function (p) {
         const lon = Math.round(p.lon * 100) / 100;
         const lat = Math.round(p.lat * 100) / 100;
         let found = stations.find(elem => elem.lon === lon) && stations.find(elem => elem.lat === lat);
         if (!found && p.active) {
-            stations.push({
-                lon: lon,
-                lat: lat,
-                station: p.station,
-                val: p.val,
-            });
+            stations.push({ lon: lon, lat: lat, station: p.station, val: p.val });
             max_val = Math.max(max_val, p.val);
             min_val = Math.min(min_val, p.val);
         }
     });
-    return {key: key, stns: stations, max: max_val, min: min_val, date: series.date};
+    return { key: key, stns: stations, max: max_val, min: min_val, date: series.date };
 }
 
-$(document).ready(function () {
+function drawMap() {
     $.when(
         $.get('clover/files/weather.json'),
         $.get('clover/files/se.json')
     ).done(function (data, se) {
         const key = 'temp';
-        if (!(key in data[0])) {
-            console.log(data);
-            return;
-        }
+        if (!(key in data[0])) return;
         let date = new Date(data[0].date);
         d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
-        // Map dimensions
         let containerWidth = document.getElementById('map').clientWidth;
         let mapHeight = containerWidth;
+
         const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
         let points = values(data[0], key);
         let colorScale = d3.scaleSequential().interpolator(d3.interpolateSpectral).domain([points.max, points.min]);
@@ -99,11 +90,14 @@ $(document).ready(function () {
 
         let path = d3.geoPath().projection(projection);
 
+        d3.select("#map").selectAll("*").remove(); // Clear previous SVG
+
         let svg = d3.select("#map")
             .append("svg")
             .attr("width", containerWidth)
             .attr("height", mapHeight);
 
+        // Sweden map
         svg.append('g').selectAll('path')
             .data(geojson_swe.features)
             .join('path')
@@ -129,50 +123,44 @@ $(document).ready(function () {
             .attr("clip-path", "url(#swe-clip)")
             .attr("d", path)
             .style('fill', (_, i) => colorScale(points.stns[i].val))
-            .style('opacity', 0.6) // semi-transparent
             .append("title")
             .text((_, i) => points.stns[i].station + " Temp: " + points.stns[i].val);
 
-        // Responsive legend placement
-        let screenWidth = window.innerWidth;
-        let legendX, legendY, legendCells, legendOrientation, fontSize;
-        if (screenWidth >= 600) {
-            // Desktop/tablet landscape
-            legendX = containerWidth - 100; // inside map on right
-            legendY = 20;
-            legendCells = 10;
-            legendOrientation = "vertical";
-            fontSize = "12px";
-        } else {
-            // Mobile / small screens
-            legendX = 0;
-            legendY = mapHeight + 10;
-            legendCells = Math.min(5, points.stns.length);
-            legendOrientation = "horizontal";
-            fontSize = Math.max(8, Math.floor(screenWidth / 40)) + "px";
-        }
-
+        // Responsive legend
         let legend = d3.legendColor()
             .labelFormat(d3.format(".0f"))
-            .cells(legendCells)
-            .scale(colorScale)
-            .orient(legendOrientation);
+            .cells(10)
+            .scale(colorScale);
 
-        let legendGroup = svg.append("g")
-            .attr("class", "legend")
-            .attr("transform", `translate(${legendX}, ${legendY})`)
-            .call(legend);
+        let legendGroup = svg.append("g").attr("class", "legend");
 
-        // Apply font size to legend text
-        legendGroup.selectAll("text").style("font-size", fontSize);
+        function updateLegend() {
+            let screenWidth = window.innerWidth;
+            let legendX, legendY, fontSize;
+            if (screenWidth >= 768) {
+                // Desktop/tablet: place legend to the right of map
+                legendX = containerWidth - 100; // move slightly inside map to avoid clipping
+                legendY = 20;
+                legend.orient("vertical");
+                fontSize = "12px";
+            } else {
+                // Mobile: place legend below map
+                legendX = containerWidth / 2 - 50; // center below map
+                legendY = mapHeight + 10;
+                legend.orient("horizontal");
+                fontSize = Math.max(8, Math.floor(screenWidth / 40)) + "px";
+            }
 
-        // Optional: reposition legend on window resize
-        window.addEventListener("resize", () => {
-            let w = document.getElementById('map').clientWidth;
-            svg.attr("width", w).attr("height", w);
-        });
+            legendGroup.attr("transform", `translate(${legendX}, ${legendY})`).call(legend);
+            legendGroup.selectAll("text").style("font-size", fontSize);
+        }
+
+        updateLegend();
+        window.addEventListener("resize", drawMap); // redraw map and reposition legend
     });
-});
+}
+
+$(document).ready(drawMap);
 </script>
 </body>
 </html>
