@@ -46,25 +46,21 @@
 function values(series, key) {
     let max_val, min_val;
     series[key].every(v => {
-        if (v.active) {
-            max_val = v.val;
-            min_val = v.val;
-            return false;
-        }
+        if (v.active) { max_val = min_val = v.val; return false; }
         return true;
     });
     let stations = [];
-    series[key].forEach(function (p) {
+    series[key].forEach(p => {
         const lon = Math.round(p.lon * 100) / 100;
         const lat = Math.round(p.lat * 100) / 100;
-        let found = stations.find(elem => elem.lon === lon) && stations.find(elem => elem.lat === lat);
+        let found = stations.find(elem => elem.lon === lon && elem.lat === lat);
         if (!found && p.active) {
             stations.push({lon, lat, station: p.station, val: p.val});
             max_val = Math.max(max_val, p.val);
             min_val = Math.min(min_val, p.val);
         }
     });
-    return {key: key, stns: stations, max: max_val, min: min_val, date: series.date};
+    return {key, stns: stations, max: max_val, min: min_val, date: series.date};
 }
 
 $(document).ready(function () {
@@ -74,11 +70,13 @@ $(document).ready(function () {
     ).done(function (data, se) {
         const key = 'temp';
         if (!(key in data[0])) return;
+
         let date = new Date(data[0].date);
         d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
         let containerWidth = Math.min(800, document.getElementById('map').clientWidth);
         let mapHeight = containerWidth;
+
         const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
         let points = values(data[0], key);
         let colorScale = d3.scaleSequential().interpolator(d3.interpolateSpectral).domain([points.max, points.min]);
@@ -99,14 +97,24 @@ $(document).ready(function () {
             .style("fill", "#eee")
             .style("stroke", "#333");
 
+        // ClipPath for Voronoi
+        svg.append('defs').append('clipPath')
+            .attr('id', 'swe-clip')
+            .append('path')
+            .attr('d', path(geojson_swe));
+
         // Tooltip
         let tooltip = d3.select("body").append("div").attr("class", "tooltip");
 
         // Voronoi diagram
-        let delaunay = d3.Delaunay.from(points.stns, d => projection([d.lon,d.lat])[0], d => projection([d.lon,d.lat])[1]);
+        let delaunay = d3.Delaunay.from(points.stns,
+            d => projection([d.lon,d.lat])[0],
+            d => projection([d.lon,d.lat])[1]);
         let voronoiPolygons = delaunay.voronoi([0,0,containerWidth,mapHeight]);
 
-        svg.append('g').selectAll("path")
+        svg.append('g')
+            .attr("clip-path", "url(#swe-clip)")
+            .selectAll("path")
             .data(points.stns)
             .enter()
             .append("path")
@@ -138,12 +146,11 @@ $(document).ready(function () {
             .scale(colorScale)
             .orient("vertical");
 
-        let legendGroup = svg.append("g")
+        svg.append("g")
             .attr("class", "legend")
             .attr("transform", `translate(${legendX},${legendY})`)
-            .call(legend);
-
-        legendGroup.selectAll("text").style("font-size", "12px");
+            .call(legend)
+            .selectAll("text").style("font-size", "12px");
 
         // Responsive resize
         window.addEventListener("resize", () => {
