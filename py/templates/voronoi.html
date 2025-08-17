@@ -128,16 +128,17 @@ $(document).ready(function () {
             .append("path")
             .attr("clip-path", "url(#swe-clip)")
             .attr("d", path)
-            .style('fill', function (_, i) { return colorScale(points.stns[i].val); })
+            .style('fill', (_, i) => colorScale(points.stns[i].val))
+            .style('opacity', 0.6) // semi-transparent
             .append("title")
-            .text(function (_, i) { return points.stns[i].station + " Temp: " + points.stns[i].val; });
+            .text((_, i) => points.stns[i].station + " Temp: " + points.stns[i].val);
 
         // Responsive legend placement
         let screenWidth = window.innerWidth;
         let legendX, legendY, legendCells, legendOrientation, fontSize;
         if (screenWidth >= 600) {
             // Desktop/tablet landscape
-            legendX = containerWidth + 20; // outside the map
+            legendX = containerWidth - 100; // inside map on right
             legendY = 20;
             legendCells = 10;
             legendOrientation = "vertical";
@@ -175,4 +176,3 @@ $(document).ready(function () {
 </script>
 </body>
 </html>
-
