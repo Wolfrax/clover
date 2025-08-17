@@ -43,7 +43,6 @@
 </div>
 
 <script>
-
     function values(series, key) {
         let max_val;
         let min_val;
@@ -84,6 +83,72 @@
                 if (!key in data[0]) {
                     console.log(data);
                     return;
+                }
+                let date = new Date(data[0].date);
+                d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
+
+                let height = width = document.getElementById('map').clientWidth;
+                const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
+                let points = values(data[0], key);
+                let colorScale = d3.scaleSequential().interpolator(d3.interpolateSpectral).domain([points.max, points.min]);
+                let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
+
+                let projection = d3.geoEqualEarth();
+                projection.fitSize([width, height], geojson_swe);
+
+                let path = d3.geoPath().projection(projection);
+
+                let svg = d3.select("#map")
+                    .append("svg")
+                    .style("width", width)
+                    .style("height", height);
+
+                svg.append('g').selectAll('path')
+                    .data(geojson_swe.features)
+                    .join('path')
+                    .attr('d', path);
+
+                // --- Single defs + clipPath with userSpaceOnUse ---
+                let defs = svg.append("defs");
+
+                // Merge all Sweden subunits into one outline for clipping
+                let sweOutline = topojson.merge(se[0], se[0].objects.subunits.geometries);
+
+                defs.append("clipPath")
+                    .attr("id", "swe-clip")
+                    .attr("clipPathUnits", "userSpaceOnUse")
+                    .append("path")
+                    .attr("d", path(sweOutline));
+
+                // Voronoi diagram
+                svg.append('g').selectAll("voronoi")
+                    .data(voronoi(points.stns).polygons().features)
+                    .enter()
+                    .append("path")
+                    .attr("clip-path", "url(#swe-clip)")
+                    .attr("d", path)
+                    .style("fill", function (_, i) {
+                        return colorScale(points.stns[i].val);
+                    })
+                    .append("title")
+                    .text(function (_, i) {
+                        return points.stns[i].station + " Temp: " + points.stns[i].val;
+                    });
+
+                // Legend (positioned top-right)
+                let legend = d3.legendColor()
+                    .labelFormat(d3.format(".0f"))
+                    .cells(10)
+                    .scale(colorScale);
+
+                svg.append("g")
+                    .attr("transform", `translate(${width - 80},20)`)
+                    .call(legend);
+            });
+    });
+</script>
+
+
 
 
     /* OLD CODE BELOW, NOT USED ANYMORE
