@@ -44,8 +44,7 @@
 
 <script>
 function values(series, key) {
-    let max_val;
-    let min_val;
+    let max_val, min_val;
     series[key].every(v => {
         if (v.active) {
             max_val = v.val;
@@ -54,8 +53,8 @@ function values(series, key) {
         }
         return true;
     });
-    let stations = [];
 
+    let stations = [];
     series[key].forEach(function (p) {
         const lon = Math.round(p.lon * 100) / 100;
         const lat = Math.round(p.lat * 100) / 100;
@@ -71,7 +70,7 @@ function values(series, key) {
             min_val = Math.min(min_val, p.val);
         }
     });
-    return {key: key, stns: stations, max: max_val, min: min_val, date: series.date};
+    return { key: key, stns: stations, max: max_val, min: min_val, date: series.date };
 }
 
 $(document).ready(function () {
@@ -88,83 +87,112 @@ $(document).ready(function () {
         let date = new Date(data[0].date);
         d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
-        // Map dimensions
-        let mapWidth = document.getElementById('map').clientWidth;
-        let mapHeight = mapWidth; // square map
-        let legendWidth = 120;    // extra space for legend
-        let svgWidth = mapWidth + legendWidth;
-
         const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
         let points = values(data[0], key);
-
         let colorScale = d3.scaleSequential()
             .interpolator(d3.interpolateSpectral)
             .domain([points.max, points.min]);
 
-        let voronoi = d3.geoVoronoi()
-            .x(d => d.lon)
-            .y(d => d.lat);
+        let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
+
+        let svg = d3.select("#map")
+            .append("svg");
 
         let projection = d3.geoEqualEarth();
-        projection.fitSize([mapWidth, mapHeight], geojson_swe);
-
         let path = d3.geoPath().projection(projection);
 
-        // Create SVG with extra width for legend
-        let svg = d3.select("#map")
-            .append("svg")
-            .attr("width", svgWidth)
-            .attr("height", mapHeight);
+        function drawMap() {
+            let containerWidth = document.getElementById('map').clientWidth;
+            let screenWidth = window.innerWidth;
+            let mapHeight;
 
-        // Group to center the map horizontally
-        let mapGroup = svg.append('g')
-            .attr("transform", `translate(${(svgWidth - mapWidth - legendWidth)/2},0)`);
+            if (screenWidth >= 600) {
+                // Desktop: square map
+                mapHeight = containerWidth;
+                svg.attr("width", containerWidth + 140)  // extra space for vertical legend
+                    .attr("height", mapHeight);
+            } else {
+                // Mobile: map fits width, legend below
+                mapHeight = containerWidth * 0.8;  // slightly shorter to leave room
+                svg.attr("width", containerWidth)
+                    .attr("height", mapHeight + 80);
+            }
 
-        // Draw Sweden outline
-        mapGroup.append('g').selectAll('path')
-            .data(geojson_swe.features)
-            .join('path')
-            .attr('d', path)
-            .style("fill", "none")
-            .style("stroke", "#333");
+            projection.fitSize([containerWidth, mapHeight], geojson_swe);
+            path = d3.geoPath().projection(projection);
 
-        // Clip path for voronoi
-        mapGroup.append('defs')
-            .selectAll("clip")
-            .data(geojson_swe.features)
-            .enter()
-            .append("clipPath")
-            .attr("id", "swe-clip")
-            .append("path")
-            .attr("d", path);
+            svg.selectAll("g.map").remove();
+            svg.selectAll("g.legend").remove();
 
-        // Voronoi cells
-        mapGroup.append('g').selectAll("voronoi")
-            .data(voronoi(points.stns).polygons().features)
-            .enter()
-            .append("path")
-            .attr("clip-path", "url(#swe-clip)")
-            .attr("d", path)
-            .style('fill', (_, i) => colorScale(points.stns[i].val))
-            .append("title")
-            .text((_, i) => points.stns[i].station + " Temp: " + points.stns[i].val);
+            // Draw Sweden map
+            let mapGroup = svg.append('g').attr("class", "map");
+            mapGroup.selectAll('path')
+                .data(geojson_swe.features)
+                .join('path')
+                .attr('d', path)
+                .attr('fill', '#f0f0f0')
+                .attr('stroke', '#333');
 
-        // Legend outside the map area but vertically centered
-        let legend = d3.legendColor()
-            .labelFormat(d3.format(".0f"))
-            .cells(10)
-            .scale(colorScale);
+            // Clip path
+            svg.append('defs')
+                .selectAll("clipPath")
+                .data(geojson_swe.features)
+                .enter()
+                .append("clipPath")
+                .attr("id", "swe-clip")
+                .append("path")
+                .attr("d", path);
 
-        // Estimate legend height (approximate)
-        let legendHeight = 200; // adjust if needed
+            // Voronoi polygons
+            mapGroup.selectAll("voronoi")
+                .data(voronoi(points.stns).polygons().features)
+                .enter()
+                .append("path")
+                .attr("clip-path", "url(#swe-clip)")
+                .attr("d", path)
+                .style("fill", (_, i) => colorScale(points.stns[i].val))
+                .append("title")
+                .text((_, i) => points.stns[i].station + " Temp: " + points.stns[i].val);
 
-        svg.append("g")
-            .attr("transform", `translate(${mapWidth + 20}, ${(mapHeight - legendHeight)/2})`)
-            .call(legend);
+            // Draw responsive legend
+            let legendX, legendY, legendCells, legendOrientation, fontSize;
+            if (screenWidth >= 600) {
+                legendX = containerWidth + 20;
+                legendY = (mapHeight - 200) / 2;
+                legendCells = 10;
+                legendOrientation = "vertical";
+                fontSize = 12;
+            } else {
+                legendX = 0;
+                legendY = mapHeight + 10;
+                legendCells = Math.min(5, points.stns.length);
+                legendOrientation = "horizontal";
+                fontSize = Math.max(8, Math.floor(screenWidth / 40));
+            }
+
+            let legend = d3.legendColor()
+                .labelFormat(d3.format(".0f"))
+                .cells(legendCells)
+                .scale(colorScale)
+                .orient(legendOrientation)
+                .labelFontSize(fontSize + "px");
+
+            svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${legendX}, ${legendY})`)
+                .call(legend);
+
+            svg.selectAll(".legendRect")
+                .attr("width", legendOrientation === "horizontal" ? containerWidth / (legendCells + 2) : 20)
+                .attr("height", legendOrientation === "horizontal" ? 15 : 20);
+        }
+
+        drawMap();
+        window.addEventListener("resize", drawMap);
     });
 });
-
 </script>
+
 
 </body>
 </html>
