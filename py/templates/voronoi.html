@@ -111,14 +111,20 @@
                 // --- Single defs + clipPath with userSpaceOnUse ---
                 let defs = svg.append("defs");
 
-                // Merge all Sweden subunits into one outline for clipping
+                // Merge all Sweden subunits into one outline
                 let sweOutline = topojson.merge(se[0], se[0].objects.subunits.geometries);
+
+                // Debug bounding box
+                console.log("Sweden outline bounds:", path.bounds(sweOutline));
 
                 defs.append("clipPath")
                     .attr("id", "swe-clip")
                     .attr("clipPathUnits", "userSpaceOnUse")
+                    .selectAll("path")
+                    .data([sweOutline])
+                    .enter()
                     .append("path")
-                    .attr("d", path(sweOutline));
+                    .attr("d", path);
 
                 // Voronoi diagram
                 svg.append('g').selectAll("voronoi")
@@ -142,10 +148,12 @@
                     .scale(colorScale);
 
                 svg.append("g")
-                    .attr("transform", `translate(${width - 80},20)`)
+                    .attr("transform", `translate(${width - 100},40)`)
                     .call(legend);
             });
     });
+
+
 
     /* OLD CODE BELOW, NOT USED ANYMORE
 
