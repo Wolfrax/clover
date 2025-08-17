@@ -3,14 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <title>Swe Voronoi</title>
-
     <link rel="shortcut icon" href="https://www.viltstigen.se/favicon.png">
-
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://d3js.org/d3-voronoi.v1.min.js"></script>
     <script src="https://d3js.org/topojson.v1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3-geo-voronoi@2"></script>
@@ -18,27 +14,36 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"
             integrity="sha512-wNH6xsp2n8CfB91nrBtfc4sfLwYPBMjSWVUwQOp60AYYXH6i8yCwuKFZ4rgK2i6pQek/b+bSyR7b01/922IBzQ=="
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { margin: 0 auto; }
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+    </style>
 </head>
-
 <body>
 <div class="container text-center">
     <h2 id="header"></h2>
     <br><br>
     <hr>
-
     <div class='row'>
         <div class="col-xs-12 col-lg-6" id="map"></div>
     </div>
-
     <br><br>
     <hr>
     <footer>
-        <p style="font-size:12px">
-            Copyright (C) Mats Melander
-        </p>
+        <p style="font-size:12px">Copyright (C) Mats Melander</p>
     </footer>
 </div>
 
@@ -54,23 +59,17 @@ function values(series, key) {
         return true;
     });
     let stations = [];
-
     series[key].forEach(function (p) {
         const lon = Math.round(p.lon * 100) / 100;
         const lat = Math.round(p.lat * 100) / 100;
-        let found = stations.find(elem => elem.lon === lon) && stations.find(elem => elem.lat === lat);
+        let found = stations.find(elem => elem.lon === lon && elem.lat === lat);
         if (!found && p.active) {
-            stations.push({
-                lon: lon,
-                lat: lat,
-                station: p.station,
-                val: p.val,
-            });
+            stations.push({ lon: lon, lat: lat, station: p.station, val: p.val });
             max_val = Math.max(max_val, p.val);
             min_val = Math.min(min_val, p.val);
         }
     });
-    return {key: key, stns: stations, max: max_val, min: min_val, date: series.date};
+    return { key: key, stns: stations, max: max_val, min: min_val, date: series.date };
 }
 
 $(document).ready(function () {
@@ -79,31 +78,27 @@ $(document).ready(function () {
         $.get('clover/files/se.json')
     ).done(function (data, se) {
         const key = 'temp';
-        if (!(key in data[0])) {
-            console.log(data);
-            return;
-        }
+        if (!(key in data[0])) return;
         let date = new Date(data[0].date);
         d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
-        // Map dimensions
         let containerWidth = document.getElementById('map').clientWidth;
-        let mapHeight = containerWidth;
+        let mapHeight = containerWidth * 0.9; // reduce height to fit screen
         const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
         let points = values(data[0], key);
+
         let colorScale = d3.scaleSequential().interpolator(d3.interpolateSpectral).domain([points.max, points.min]);
         let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
 
         let projection = d3.geoEqualEarth();
         projection.fitSize([containerWidth, mapHeight], geojson_swe);
-
         let path = d3.geoPath().projection(projection);
 
-        let svg = d3.select("#map")
-            .append("svg")
+        let svg = d3.select("#map").append("svg")
             .attr("width", containerWidth)
             .attr("height", mapHeight);
 
+        // Map background
         svg.append('g').selectAll('path')
             .data(geojson_swe.features)
             .join('path')
@@ -111,7 +106,7 @@ $(document).ready(function () {
             .style("fill", "#eee")
             .style("stroke", "#333");
 
-        // ClipPath for Voronoi
+        // Clip path for Voronoi
         svg.append('defs')
             .selectAll("clipPath")
             .data(geojson_swe.features)
@@ -121,63 +116,58 @@ $(document).ready(function () {
             .append("path")
             .attr("d", path);
 
-        // Voronoi diagram
+        // Tooltip div
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+
+        // Voronoi cells
         svg.append('g').selectAll("voronoi")
             .data(voronoi(points.stns).polygons().features)
             .enter()
             .append("path")
             .attr("clip-path", "url(#swe-clip)")
             .attr("d", path)
-            .style('fill', function (_, i) { return colorScale(points.stns[i].val); })
-            .append("title")
-            .text(function (_, i) { return points.stns[i].station + " Temp: " + points.stns[i].val; });
+            .style('fill', (_, i) => colorScale(points.stns[i].val))
+            .style('stroke', '#666')
+            .style('stroke-width', 0.5)
+            .on("mouseover touchstart", function(event, d) {
+                let i = d.index;
+                tooltip.style("opacity", 1)
+                    .html(points.stns[i].station + "<br>Temp: " + points.stns[i].val)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 25) + "px");
+            })
+            .on("mousemove touchmove", function(event) {
+                tooltip.style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 25) + "px");
+            })
+            .on("mouseout touchend", function() {
+                tooltip.style("opacity", 0);
+            });
 
-        // Responsive legend placement
-        let screenWidth = window.innerWidth;
-        let mapPadding = 20; // padding between map and legend
-        let legendX, legendY, legendCells, legendOrientation, fontSize;
-
-        if (screenWidth >= 600) {
-            // Desktop/tablet landscape: legend outside map
-            legendX = containerWidth + mapPadding;
-            legendY = 20;
-            legendCells = 10;
-            legendOrientation = "vertical";
-            fontSize = "12px";
-        } else {
-            // Mobile / small screens: legend below map
-            legendX = 0;
-            legendY = mapHeight + 10;
-            legendCells = Math.min(5, points.stns.length);
-            legendOrientation = "horizontal";
-            fontSize = Math.max(8, Math.floor(screenWidth / 40)) + "px";
-        }
-
+        // Legend placement with padding
+        let legendPadding = 10;
+        let legendCells = 10;
+        if (window.innerWidth < 500) legendCells = Math.min(5, points.stns.length);
         let legend = d3.legendColor()
             .labelFormat(d3.format(".0f"))
             .cells(legendCells)
             .scale(colorScale)
-            .orient(legendOrientation);
+            .orient("vertical");
 
         let legendGroup = svg.append("g")
             .attr("class", "legend")
-            .attr("transform", `translate(${legendX}, ${legendY})`)
+            .attr("transform", `translate(${containerWidth - 80}, ${legendPadding})`)
             .call(legend);
 
-        // Apply font size to legend text
-        legendGroup.selectAll("text").style("font-size", fontSize);
+        legendGroup.selectAll("text").style("font-size", "12px");
 
-        // Optional: reposition map and legend on window resize
+        // Responsive map on window resize
         window.addEventListener("resize", () => {
             let w = document.getElementById('map').clientWidth;
-            svg.attr("width", w).attr("height", w);
-
-            // Optional: adjust legend below map on small screens
-            if (window.innerWidth < 600) {
-                legendGroup.attr("transform", `translate(0, ${w + 10})`);
-            } else {
-                legendGroup.attr("transform", `translate(${w + mapPadding}, 20)`);
-            }
+            projection.fitSize([w, w * 0.9], geojson_swe);
+            svg.attr("width", w).attr("height", w * 0.9);
+            svg.selectAll('path').attr('d', path);
+            legendGroup.attr("transform", `translate(${w - 80}, ${legendPadding})`);
         });
     });
 });
