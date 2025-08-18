@@ -1,10 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <title>Swe Voronoi</title>
   <link rel="shortcut icon" href="https://www.viltstigen.se/favicon.png">
 
@@ -21,18 +19,16 @@
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
-
   <style>
     .tooltip {
       position: absolute;
       background: white;
       border: 1px solid #666;
+      border-radius: 4px;
       padding: 4px 8px;
       font-size: 12px;
       pointer-events: none;
       opacity: 0;
-      border-radius: 4px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
   </style>
 </head>
@@ -44,7 +40,7 @@
   <hr>
 
   <div class='row'>
-    <div class="col-xs-12 col-lg-6" id="map"></div>
+    <div class="col-xs-12 col-lg-8" id="map"></div>
   </div>
 
   <br><br>
@@ -100,16 +96,14 @@ $(document).ready(function () {
     let date = new Date(data[0].date);
     d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
+    // Map dimensions
     let containerWidth = document.getElementById('map').clientWidth;
-    let mapHeight = Math.min(containerWidth * 0.9, window.innerHeight * 0.7);
-
+    let mapHeight = containerWidth;
     const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
     let points = values(data[0], key);
-
     let colorScale = d3.scaleSequential()
       .interpolator(d3.interpolateSpectral)
       .domain([points.max, points.min]);
-
     let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
 
     let projection = d3.geoEqualEarth();
@@ -117,11 +111,13 @@ $(document).ready(function () {
 
     let path = d3.geoPath().projection(projection);
 
+    // SVG (will resize if legend below is needed)
     let svg = d3.select("#map")
       .append("svg")
       .attr("width", containerWidth)
       .attr("height", mapHeight);
 
+    // Draw Sweden map
     svg.append('g').selectAll('path')
       .data(geojson_swe.features)
       .join('path')
@@ -129,12 +125,18 @@ $(document).ready(function () {
       .style("fill", "#eee")
       .style("stroke", "#333");
 
+    // ClipPath for Voronoi
     svg.append('defs')
       .append("clipPath")
       .attr("id", "swe-clip")
       .append("path")
-      .attr("d", path(geojson_swe));
+      .attr("d", path);
 
+    // Tooltip div
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip");
+
+    // Voronoi diagram
     svg.append('g').selectAll("voronoi")
       .data(voronoi(points.stns).polygons().features)
       .enter()
@@ -142,44 +144,46 @@ $(document).ready(function () {
       .attr("clip-path", "url(#swe-clip)")
       .attr("d", path)
       .style('fill', function (_, i) { return colorScale(points.stns[i].val); })
-      .on("mousemove touchstart", function(event, d) {
+      .on("mousemove touchmove", function (event, d) {
+        let i = d.properties.site.originalObject.index;
+        let stn = points.stns[i];
         tooltip.style("opacity", 1)
-          .html(points.stns[d.properties.siteid].station + "<br>Temp: " + points.stns[d.properties.siteid].val)
+          .html(stn.station + "<br/>Temp: " + stn.val)
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 20) + "px");
       })
-      .on("mouseout touchend", function() {
+      .on("mouseout touchend", function () {
         tooltip.style("opacity", 0);
       });
-
-    // Tooltip div
-    let tooltip = d3.select("body").append("div")
-      .attr("class", "tooltip");
 
     // Responsive legend placement
     let screenWidth = window.innerWidth;
     let legendX, legendY, legendCells, legendOrientation, fontSize, shapeWidth;
 
     if (screenWidth >= 768) {
-      // Desktop / iPad landscape: vertical to the right
+      // Desktop / iPad landscape
       legendX = containerWidth - 60;
       legendY = 20;
       legendCells = 10;
       legendOrientation = "vertical";
       fontSize = "12px";
       shapeWidth = 20;
+
+      svg.attr("height", mapHeight); // keep normal height
     } else {
-      // Mobile / portrait: horizontal below
+      // Mobile / iPhone
       legendX = 20;
-      legendY = mapHeight + 40;
+      legendY = mapHeight + 20;  // place below map
       legendCells = 5;
       legendOrientation = "horizontal";
       fontSize = Math.max(10, Math.floor(screenWidth / 40)) + "px";
       shapeWidth = Math.max(30, screenWidth / legendCells / 1.5);
+
+      svg.attr("height", mapHeight + 80); // make room for legend
     }
 
     let legend = d3.legendColor()
-      .labelFormat(d3.format(" .0f")) // space before numbers to avoid 2120 effect
+      .labelFormat(d3.format(".0f"))
       .cells(legendCells)
       .shapeWidth(shapeWidth)
       .scale(colorScale)
