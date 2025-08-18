@@ -20,18 +20,18 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
-
     <style>
+        /* Tooltip styling */
         .tooltip {
             position: absolute;
             background-color: white;
-            border: 1px solid #333;
-            padding: 5px 10px;
-            border-radius: 4px;
+            border: 1px solid #999;
+            padding: 5px 8px;
+            border-radius: 3px;
             pointer-events: none;
             font-size: 12px;
-            opacity: 0.95;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            color: black;
+            opacity: 0.9;
         }
     </style>
 </head>
@@ -67,12 +67,18 @@ function values(series, key) {
         return true;
     });
     let stations = [];
+
     series[key].forEach(function (p) {
         const lon = Math.round(p.lon * 100) / 100;
         const lat = Math.round(p.lat * 100) / 100;
-        let found = stations.find(elem => elem.lon === lon) && stations.find(elem => elem.lat === lat);
+        let found = stations.find(elem => elem.lon === lon && elem.lat === lat);
         if (!found && p.active) {
-            stations.push({lon, lat, station: p.station, val: p.val});
+            stations.push({
+                lon: lon,
+                lat: lat,
+                station: p.station,
+                val: p.val,
+            });
             max_val = Math.max(max_val, p.val);
             min_val = Math.min(min_val, p.val);
         }
@@ -86,19 +92,28 @@ $(document).ready(function () {
         $.get('clover/files/se.json')
     ).done(function (data, se) {
         const key = 'temp';
-        if (!(key in data[0])) { console.log(data); return; }
-
+        if (!(key in data[0])) {
+            console.log(data);
+            return;
+        }
         let date = new Date(data[0].date);
         d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
-        let containerWidth = document.getElementById('map').clientWidth;
-        let mapHeight = containerWidth * 1.1;
+        // Map dimensions
+        let screenWidth = window.innerWidth;
+        let maxWidth = 900;  // Max width for desktop to avoid scrolling
+        let containerWidth = Math.min(document.getElementById('map').clientWidth, maxWidth);
+        let mapHeight = containerWidth * 1.2; // proportional height
 
         const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
         let points = values(data[0], key);
 
-        // Blue = cold, Red = hot
-        let colorScale = d3.scaleSequential(d3.interpolateRdBu).domain([points.max, points.min]);
+        // Blue = cold, red = hot
+        let colorScale = d3.scaleSequential()
+            .interpolator(d3.interpolateRdYlBu)  // Red-Yellow-Blue
+            .domain([points.max, points.min]);   // reversed for blue=cold, red=hot
+
+        let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
 
         let projection = d3.geoEqualEarth();
         projection.fitSize([containerWidth, mapHeight], geojson_swe);
@@ -106,10 +121,10 @@ $(document).ready(function () {
 
         let svg = d3.select("#map")
             .append("svg")
-            .attr("width", containerWidth)
+            .attr("width", containerWidth + 120) // extra space for legend
             .attr("height", mapHeight);
 
-        // Sweden base map
+        // Draw Sweden boundaries
         svg.append('g').selectAll('path')
             .data(geojson_swe.features)
             .join('path')
@@ -117,10 +132,7 @@ $(document).ready(function () {
             .style("fill", "#eee")
             .style("stroke", "#333");
 
-        // Voronoi diagram
-        const voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
-        let voronoiPolygons = voronoi(points.stns).polygons().features;
-
+        // ClipPath for Voronoi
         svg.append('defs')
             .selectAll("clipPath")
             .data(geojson_swe.features)
@@ -130,55 +142,46 @@ $(document).ready(function () {
             .append("path")
             .attr("d", path);
 
-        svg.append('g').selectAll("path.voronoi")
-            .data(voronoiPolygons)
+        // Voronoi cells
+        let cells = voronoi(points.stns).polygons();
+        svg.append('g').selectAll("path")
+            .data(cells.features)
             .enter()
             .append("path")
             .attr("clip-path", "url(#swe-clip)")
             .attr("d", path)
-            .attr("class", "voronoi")
             .style('fill', (_, i) => colorScale(points.stns[i].val))
             .style('stroke', '#555')
             .style('stroke-width', 0.5)
-            .on("mouseenter touchstart", function (event, d) {
-                let i = voronoiPolygons.indexOf(d);
-                tooltip.style("display", "block")
-                       .html(points.stns[i].station + "<br>Temp: " + points.stns[i].val)
-                       .style("left", (event.pageX + 10) + "px")
-                       .style("top", (event.pageY - 20) + "px");
+            .on("mousemove touchmove", function(event, d) {
+                const i = cells.features.indexOf(d);
+                let tooltip = d3.select("#map").selectAll(".tooltip").data([points.stns[i]]);
+                tooltip.enter().append("div").attr("class", "tooltip").merge(tooltip)
+                    .html(points.stns[i].station + "<br>Temp: " + points.stns[i].val)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY + 10) + "px")
+                    .style("display", "block");
             })
-            .on("mousemove touchmove", function (event) {
-                tooltip.style("left", (event.pageX + 10) + "px")
-                       .style("top", (event.pageY - 20) + "px");
-            })
-            .on("mouseleave touchend", function () {
-                tooltip.style("display", "none");
+            .on("mouseout touchend", function() {
+                d3.select("#map").selectAll(".tooltip").style("display", "none");
             });
 
-        // Tooltip div
-        const tooltip = d3.select("body").append("div")
-            .attr("class", "tooltip")
-            .style("display", "none");
-
-        // Legend
-        let legendGroup = svg.append("g")
-            .attr("class", "legend")
-            .attr("transform", `translate(${containerWidth - 80}, 20)`);
-
+        // Vertical legend on the right
         let legend = d3.legendColor()
+            .labelFormat(d3.format(".0f"))
             .cells(10)
             .scale(colorScale)
             .orient("vertical");
 
-        legendGroup.call(legend);
+        svg.append("g")
+            .attr("class", "legend")
+            .attr("transform", `translate(${containerWidth + 20},20)`)
+            .call(legend);
 
-        // Resize SVG on window resize
+        // Optional: responsive resize
         window.addEventListener("resize", () => {
-            let w = document.getElementById('map').clientWidth;
-            let h = w * 1.1;
-            svg.attr("width", w).attr("height", h);
-            projection.fitSize([w, h], geojson_swe);
-            svg.selectAll('path').attr('d', path);
+            let w = Math.min(document.getElementById('map').clientWidth, maxWidth);
+            svg.attr("width", w + 120).attr("height", w * 1.2);
         });
     });
 });
