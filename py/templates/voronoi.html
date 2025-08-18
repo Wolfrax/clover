@@ -65,6 +65,7 @@ function values(series, key) {
   });
   let stations = [];
 
+  let idx = 0;
   series[key].forEach(function (p) {
     const lon = Math.round(p.lon * 100) / 100;
     const lat = Math.round(p.lat * 100) / 100;
@@ -75,6 +76,7 @@ function values(series, key) {
         lat: lat,
         station: p.station,
         val: p.val,
+        index: idx++   // <-- assign index
       });
       max_val = Math.max(max_val, p.val);
       min_val = Math.min(min_val, p.val);
@@ -130,7 +132,7 @@ $(document).ready(function () {
       .append("clipPath")
       .attr("id", "swe-clip")
       .append("path")
-      .attr("d", path);
+      .attr("d", path(geojson_swe));
 
     // Tooltip div
     const tooltip = d3.select("body").append("div")
@@ -143,7 +145,10 @@ $(document).ready(function () {
       .append("path")
       .attr("clip-path", "url(#swe-clip)")
       .attr("d", path)
-      .style('fill', function (_, i) { return colorScale(points.stns[i].val); })
+      .style('fill', function (d) {
+        let i = d.properties.site.originalObject.index;
+        return colorScale(points.stns[i].val);
+      })
       .on("mousemove touchmove", function (event, d) {
         let i = d.properties.site.originalObject.index;
         let stn = points.stns[i];
@@ -169,17 +174,17 @@ $(document).ready(function () {
       fontSize = "12px";
       shapeWidth = 20;
 
-      svg.attr("height", mapHeight); // keep normal height
+      svg.attr("height", mapHeight);
     } else {
       // Mobile / iPhone
       legendX = 20;
-      legendY = mapHeight + 20;  // place below map
+      legendY = mapHeight + 20;
       legendCells = 5;
       legendOrientation = "horizontal";
       fontSize = Math.max(10, Math.floor(screenWidth / 40)) + "px";
       shapeWidth = Math.max(30, screenWidth / legendCells / 1.5);
 
-      svg.attr("height", mapHeight + 80); // make room for legend
+      svg.attr("height", mapHeight + 80);
     }
 
     let legend = d3.legendColor()
