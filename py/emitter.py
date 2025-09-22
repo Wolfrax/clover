@@ -3,7 +3,6 @@
 from flask import Flask, render_template, send_from_directory
 import os
 
-
 __author__ = 'Wolfrax'
 
 app = Flask(__name__)
@@ -28,6 +27,7 @@ def index():
 
 
 @app.route('/files/<filename>', methods=['GET'])
+@app.route('/clover/files/<filename>', methods=['GET'])
 def download(filename):
     return send_from_directory(directory=os.path.join(app.root_path, 'static'), path=filename)
 

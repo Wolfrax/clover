@@ -101,27 +101,25 @@ $(document).ready(function () {
 
         // Map dimensions
         let screenWidth = window.innerWidth;
-        let maxWidth = 900;  // Max width for desktop to avoid scrolling
+        let maxWidth = 900;
         let containerWidth = Math.min(document.getElementById('map').clientWidth, maxWidth);
-        let mapHeight = containerWidth * 1.2; // proportional height
+        let mapHeight = containerWidth * 1.2;
 
         const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
         let points = values(data[0], key);
 
-        // Blue = cold, red = hot
         let colorScale = d3.scaleSequential()
-            .interpolator(d3.interpolateRdYlBu)  // Red-Yellow-Blue
-            .domain([points.max, points.min]);   // reversed for blue=cold, red=hot
+            .interpolator(d3.interpolateRdYlBu)
+            .domain([points.max, points.min]);
 
         let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
-
         let projection = d3.geoEqualEarth();
         projection.fitSize([containerWidth, mapHeight], geojson_swe);
         let path = d3.geoPath().projection(projection);
 
         let svg = d3.select("#map")
             .append("svg")
-            .attr("width", containerWidth + 120) // extra space for legend
+            .attr("width", (screenWidth > 768 ? containerWidth + 120 : containerWidth))
             .attr("height", mapHeight);
 
         // Draw Sweden boundaries
@@ -166,25 +164,40 @@ $(document).ready(function () {
                 d3.select("#map").selectAll(".tooltip").style("display", "none");
             });
 
-        // Vertical legend on the right
+        // Define legend
         let legend = d3.legendColor()
             .labelFormat(d3.format(".0f"))
             .cells(10)
-            .scale(colorScale)
-            .orient("vertical");
+            .scale(colorScale);
 
-        svg.append("g")
-            .attr("class", "legend")
-            .attr("transform", `translate(${containerWidth + 20},20)`)
-            .call(legend);
+        if (screenWidth >= 1024) {
+            // Desktop & large landscape tablets: vertical legend inside main svg
+            legend.orient("vertical");
+            svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${containerWidth + 20},20)`)
+                .call(legend);
+        } else {
+            // Phones + tablets in portrait: horizontal legend below map
+            legend.orient("horizontal");
+            let legendSvg = d3.select("#map")
+                .append("svg")
+                .attr("width", containerWidth)
+                .attr("height", 90)
+                .append("g")
+                .attr("class", "legend")
+                .attr("transform", "translate(20,40)");
+            legendSvg.call(legend);
+        }
 
-        // Optional: responsive resize
+
+        // Reload page on resize so legend redraws correctly
         window.addEventListener("resize", () => {
-            let w = Math.min(document.getElementById('map').clientWidth, maxWidth);
-            svg.attr("width", w + 120).attr("height", w * 1.2);
-        });
+            location.reload();
+       });
     });
 });
 </script>
+
 </body>
 </html>
