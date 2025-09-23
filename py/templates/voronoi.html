@@ -100,10 +100,13 @@ $(document).ready(function () {
         d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
 
         // Map dimensions
-        let screenWidth = window.innerWidth;
-        let maxWidth = 900;
-        let containerWidth = Math.min(document.getElementById('map').clientWidth, maxWidth);
-        let mapHeight = containerWidth * 1.2;
+        let screenWidth  = window.innerWidth;
+        let screenHeight = window.innerHeight;
+        let maxWidth     = 900;
+
+        let containerWidth  = Math.min(document.getElementById('map').clientWidth, maxWidth);
+        let availableHeight = screenHeight * 0.75; // leave room for header/footer
+        let mapHeight       = Math.min(containerWidth * 1.2, availableHeight);
 
         const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
         let points = values(data[0], key);
@@ -171,14 +174,12 @@ $(document).ready(function () {
             .scale(colorScale);
 
         if (screenWidth >= 1024) {
-            // Desktop & large landscape tablets: vertical legend inside main svg
             legend.orient("vertical");
             svg.append("g")
                 .attr("class", "legend")
                 .attr("transform", `translate(${containerWidth + 20},20)`)
                 .call(legend);
         } else {
-            // Phones + tablets in portrait: horizontal legend below map
             legend.orient("horizontal");
             let legendSvg = d3.select("#map")
                 .append("svg")
@@ -190,14 +191,13 @@ $(document).ready(function () {
             legendSvg.call(legend);
         }
 
-
-        // Reload page on resize so legend redraws correctly
         window.addEventListener("resize", () => {
             location.reload();
-       });
+        });
     });
 });
 </script>
+
 
 </body>
 </html>
