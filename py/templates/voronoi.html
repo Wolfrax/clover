@@ -1,210 +1,605 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <title>Swe Voronoi</title>
-
-    <link rel="shortcut icon" href="https://www.viltstigen.se/favicon.png">
-
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://d3js.org/topojson.v1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3-geo-voronoi@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3-geo@3"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"
-            integrity="sha512-wNH6xsp2n8CfB91nrBtfc4sfLwYPBMjSWVUwQOp60AYYXH6i8yCwuKFZ4rgK2i6pQek/b+bSyR7b01/922IBzQ=="
-            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
-    <style>
-        /* Tooltip styling */
-        .tooltip {
-            position: absolute;
-            background-color: white;
-            border: 1px solid #999;
-            padding: 5px 8px;
-            border-radius: 3px;
-            pointer-events: none;
-            font-size: 12px;
-            color: black;
-            opacity: 0.9;
-        }
-    </style>
-    <style>
-    .legend text {
-        font-size: 11px;
-    }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clover — Sweden Temperature</title>
+  <link rel="shortcut icon" href="https://www.viltstigen.se/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --border: #dde3ed;
+  --accent: #2563eb;
+  --text: #0f172a;
+  --muted: #64748b;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+  --radius: 10px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Exo 2', sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  font-family: 'Anton', sans-serif;
+  font-size: 1.35rem;
+  color: var(--accent);
+  letter-spacing: 2px;
+}
+.logo span {
+  color: var(--text);
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+  margin-left: 6px;
+}
+.updated-time {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 14px 24px 10px;
+}
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  transition: transform 0.15s ease;
+}
+.stat-card:hover { transform: translateY(-2px); }
+.stat-card .label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.stat-card .value {
+  font-family: 'Anton', sans-serif;
+  font-size: 2.1rem;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-card .sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stat-card.cold .value { color: #4575b4; }
+.stat-card.hot  .value { color: #d73027; }
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 296px;
+  gap: 10px;
+  padding: 0 24px 24px;
+  flex: 1;
+  min-height: calc(100vh - 168px);
+}
+.map-panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 680px;
+}
+.map-header {
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+#map-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#map-svg-wrapper {
+  flex: 1;
+  overflow: hidden;
+}
+#map-svg-wrapper svg { display: block; }
+.legend-bar {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.legend-labels .cold-lbl { color: #4575b4; font-weight: 600; }
+.legend-labels .warm-lbl { color: #d73027; font-weight: 600; }
+.map-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+  z-index: 20;
+  display: none;
+  white-space: nowrap;
+}
+.map-tooltip strong { display: block; color: var(--text); margin-bottom: 2px; }
+.map-tooltip .tv { font-family: 'Share Tech Mono', monospace; font-size: 13px; }
+.detail-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.detail-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+.card-title {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.placeholder-msg {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  text-align: center;
+  padding: 18px 8px;
+  border: 1.5px dashed var(--border);
+  border-radius: 6px;
+}
+.stn-name {
+  font-family: 'Anton', sans-serif;
+  font-size: 1.1rem;
+  color: var(--text);
+  margin-bottom: 10px;
+  line-height: 1.25;
+}
+.stn-temp {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 2.8rem;
+  line-height: 1;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.stn-temp .unit { font-size: 1.1rem; color: var(--muted); }
+.stn-coords {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 2;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: 6px;
+}
+.app-footer {
+  text-align: center;
+  padding: 10px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+@media (max-width: 900px) {
+  .main-content  { grid-template-columns: 1fr; min-height: auto; }
+  .stat-row      { grid-template-columns: repeat(2, 1fr); }
+  .detail-panel  { display: grid; grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 500px) {
+  .stat-row { grid-template-columns: 1fr 1fr; }
+  .stat-card .value { font-size: 1.5rem; }
+}
+  </style>
 </head>
 
 <body>
-<div class="container text-center">
-    <h2 id="header"></h2>
-    <br><br>
-    <hr>
 
-    <div class='row'>
-        <div class="col-12" id="map"></div>
-    </div>
+<header class="app-header">
+  <div class="logo">&#127777; CLOVER<span>&#8212; Sweden Temperature</span></div>
+  <div id="updated-time" class="updated-time">Loading&hellip;</div>
+</header>
 
-    <br><br>
-    <hr>
-    <footer>
-        <p style="font-size:12px">
-            Copyright (C) Mats Melander
-        </p>
-    </footer>
+<div class="stat-row">
+  <div class="stat-card cold">
+    <div class="label">Min Temperature</div>
+    <div class="value" id="stat-min">&mdash;</div>
+    <div class="sub"  id="stat-min-stn">&nbsp;</div>
+  </div>
+  <div class="stat-card hot">
+    <div class="label">Max Temperature</div>
+    <div class="value" id="stat-max">&mdash;</div>
+    <div class="sub"  id="stat-max-stn">&nbsp;</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Sweden Average</div>
+    <div class="value" id="stat-avg">&mdash;</div>
+    <div class="sub"  id="stat-avg-sub">&nbsp;</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Active Stations</div>
+    <div class="value" id="stat-count">&mdash;</div>
+    <div class="sub">of 246 total SMHI</div>
+  </div>
 </div>
 
+<div class="main-content">
+
+  <div class="map-panel">
+    <div class="map-header">Voronoi Temperature Regions &mdash; hover to inspect, click to pin</div>
+    <div id="map-container">
+      <div id="map-svg-wrapper"></div>
+      <div class="legend-bar">
+        <svg height="12" style="width:100%;display:block;border-radius:6px;overflow:hidden">
+          <defs>
+            <linearGradient id="lg" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%"   stop-color="#4575b4"/>
+              <stop offset="25%"  stop-color="#91bfdb"/>
+              <stop offset="50%"  stop-color="#ffffbf"/>
+              <stop offset="75%"  stop-color="#fc8d59"/>
+              <stop offset="100%" stop-color="#d73027"/>
+            </linearGradient>
+          </defs>
+          <rect width="100%" height="12" fill="url(#lg)"/>
+        </svg>
+        <div class="legend-labels">
+          <span class="cold-lbl" id="legend-min">&nbsp;</span>
+          <span id="legend-avg">&nbsp;</span>
+          <span class="warm-lbl" id="legend-max">&nbsp;</span>
+        </div>
+      </div>
+      <div id="map-tooltip" class="map-tooltip"></div>
+    </div>
+  </div>
+
+  <div class="detail-panel">
+    <div class="detail-card">
+      <div class="card-title">Station Details</div>
+      <div id="station-detail">
+        <div class="placeholder-msg">
+          Hover a region to preview<br>
+          click to pin details
+        </div>
+      </div>
+    </div>
+    <div class="detail-card">
+      <div class="card-title">Temperature Distribution</div>
+      <div id="dist-chart"></div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="app-footer">
+  <p>&copy; Mats Melander &mdash; Data: SMHI Open Data</p>
+</footer>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/topojson.v1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo-voronoi@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo@3"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.2.0/highcharts.js"></script>
+
 <script>
-function values(series, key) {
-    let max_val, min_val;
-    series[key].every(v => {
-        if (v.active) {
-            max_val = v.val;
-            min_val = v.val;
-            return false;
-        }
-        return true;
+(function () {
+  'use strict';
+
+  // ── Data processing (preserve original deduplication logic) ───────────────
+  function processStations(weatherData, key) {
+    var raw = weatherData[key];
+    var maxVal, minVal;
+    raw.every(function (v) {
+      if (v.active) { maxVal = v.val; minVal = v.val; return false; }
+      return true;
     });
-    let stations = [];
-
-    series[key].forEach(function (p) {
-        const lon = Math.round(p.lon * 100) / 100;
-        const lat = Math.round(p.lat * 100) / 100;
-        let found = stations.find(elem => elem.lon === lon && elem.lat === lat);
-        if (!found && p.active) {
-            stations.push({
-                lon: lon,
-                lat: lat,
-                station: p.station,
-                val: p.val,
-            });
-            max_val = Math.max(max_val, p.val);
-            min_val = Math.min(min_val, p.val);
-        }
+    var stns = [];
+    raw.forEach(function (p) {
+      var lon = Math.round(p.lon * 100) / 100;
+      var lat = Math.round(p.lat * 100) / 100;
+      var found = stns.find(function (e) { return e.lon === lon && e.lat === lat; });
+      if (!found && p.active) {
+        stns.push({ lon: lon, lat: lat, station: p.station, val: p.val });
+        maxVal = Math.max(maxVal, p.val);
+        minVal = Math.min(minVal, p.val);
+      }
     });
-    return {key: key, stns: stations, max: max_val, min: min_val, date: series.date};
-}
+    return { stns: stns, max: maxVal, min: minVal, date: weatherData.date };
+  }
 
-$(document).ready(function () {
-    $.when(
-        $.get('clover/files/weather.json'),
-        $.get('clover/files/se.json')
-    ).done(function (data, se) {
-        const key = 'temp';
-        if (!(key in data[0])) {
-            console.log(data);
-            return;
-        }
-        let date = new Date(data[0].date);
-        d3.select("#header").text("Temperatures " + date.toLocaleString("sv-SV"));
+  // ── Stat card population ──────────────────────────────────────────────────
+  function populateStats(pts) {
+    var stns   = pts.stns;
+    var minStn = stns.reduce(function (a, b) { return a.val < b.val ? a : b; });
+    var maxStn = stns.reduce(function (a, b) { return a.val > b.val ? a : b; });
+    var avg    = (stns.reduce(function (s, a) { return s + a.val; }, 0) / stns.length).toFixed(1);
 
-        // Map dimensions
-        let screenWidth  = window.innerWidth;
-        let screenHeight = window.innerHeight;
-        let maxWidth     = 900;
+    document.getElementById('stat-min').textContent     = pts.min + '°';
+    document.getElementById('stat-min-stn').textContent = minStn.station;
+    document.getElementById('stat-max').textContent     = pts.max + '°';
+    document.getElementById('stat-max-stn').textContent = maxStn.station;
+    document.getElementById('stat-avg').textContent     = avg + '°';
+    document.getElementById('stat-avg-sub').textContent = stns.length + ' active stations';
+    document.getElementById('stat-count').textContent   = stns.length;
 
-        let containerWidth  = Math.min(document.getElementById('map').clientWidth, maxWidth);
-        let availableHeight = screenHeight * 0.75; // leave room for header/footer
-        let mapHeight       = Math.min(containerWidth * 1.2, availableHeight);
+    document.getElementById('legend-min').textContent = pts.min + '°C Cold';
+    document.getElementById('legend-avg').textContent = avg + '°C';
+    document.getElementById('legend-max').textContent = pts.max + '°C Warm';
 
-        const geojson_swe = topojson.feature(se[0], se[0].objects.subunits);
-        let points = values(data[0], key);
+    var date = new Date(pts.date);
+    document.getElementById('updated-time').textContent =
+        'Updated ' + date.toLocaleString('sv-SE');
 
-        let colorScale = d3.scaleSequential()
-            .interpolator(d3.interpolateRdYlBu)
-            .domain([points.max, points.min]);
+    return parseFloat(avg);
+  }
 
-        let voronoi = d3.geoVoronoi().x(d => d.lon).y(d => d.lat);
-        let projection = d3.geoEqualEarth();
-        projection.fitSize([containerWidth, mapHeight], geojson_swe);
-        let path = d3.geoPath().projection(projection);
+  // ── Voronoi map ───────────────────────────────────────────────────────────
+  var geojson_swe, colorScale, stations, cells;
+  var pinnedStation = null;
 
-        let svg = d3.select("#map")
-            .append("svg")
-            .attr("width", (screenWidth > 768 ? containerWidth + 120 : containerWidth))
-            .attr("height", mapHeight);
+  function renderMap() {
+    d3.select('#map-svg').remove();
 
-        // Draw Sweden boundaries
-        svg.append('g').selectAll('path')
-            .data(geojson_swe.features)
-            .join('path')
-            .attr('d', path)
-            .style("fill", "#eee")
-            .style("stroke", "#333");
+    var wrapper = document.getElementById('map-svg-wrapper');
+    var W = wrapper.clientWidth  || 500;
+    var H = wrapper.clientHeight;
+    if (!H || H < 100) H = Math.min(W * 1.7, window.innerHeight * 0.78);
 
-        // ClipPath for Voronoi
-        svg.append('defs')
-            .selectAll("clipPath")
-            .data(geojson_swe.features)
-            .enter()
-            .append("clipPath")
-            .attr("id", "swe-clip")
-            .append("path")
-            .attr("d", path);
+    var projection = d3.geoEqualEarth()
+        .fitSize([W, H], geojson_swe)
+        .precision(0.1);
+    var path = d3.geoPath().projection(projection);
 
-        // Voronoi cells
-        let cells = voronoi(points.stns).polygons();
-        svg.append('g').selectAll("path")
-            .data(cells.features)
-            .enter()
-            .append("path")
-            .attr("clip-path", "url(#swe-clip)")
-            .attr("d", path)
-            .style('fill', (_, i) => colorScale(points.stns[i].val))
-            .style('stroke', '#555')
-            .style('stroke-width', 0.5)
-            .on("mousemove touchmove", function(event, d) {
-                const i = cells.features.indexOf(d);
-                let tooltip = d3.select("#map").selectAll(".tooltip").data([points.stns[i]]);
-                tooltip.enter().append("div").attr("class", "tooltip").merge(tooltip)
-                    .html(points.stns[i].station + "<br>Temp: " + points.stns[i].val)
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY + 10) + "px")
-                    .style("display", "block");
-            })
-            .on("mouseout touchend", function() {
-                d3.select("#map").selectAll(".tooltip").style("display", "none");
-            });
+    var svg = d3.select('#map-svg-wrapper')
+        .append('svg')
+        .attr('id', 'map-svg')
+        .attr('width', W)
+        .attr('height', H);
 
-        // Define legend
-        let cellCount = screenWidth < 600 ? 5 : 8;
-        let legend = d3.legendColor()
-            .labelFormat(d3.format(".0f"))
-            .cells(cellCount)
-            .shapePadding(10)
-            .scale(colorScale);
+    // Base fill
+    svg.append('g').selectAll('path')
+        .data(geojson_swe.features)
+        .join('path')
+        .attr('d', path)
+        .style('fill', '#dfe6ef')
+        .style('stroke', 'none');
 
-        if (screenWidth >= 1024) {
-            legend.orient("vertical");
-            svg.append("g")
-                .attr("class", "legend")
-                .attr("transform", `translate(${containerWidth + 20},20)`)
-                .call(legend);
-        } else {
-            legend.orient("horizontal");
-            let legendSvg = d3.select("#map")
-                .append("svg")
-                .attr("width", containerWidth)
-                .attr("height", 90)
-                .append("g")
-                .attr("class", "legend")
-                .attr("transform", "translate(20,40)");
-            legendSvg.call(legend);
-        }
+    // Clip path — Sweden outline
+    svg.append('defs')
+        .selectAll('clipPath')
+        .data(geojson_swe.features)
+        .enter()
+        .append('clipPath')
+        .attr('id', 'swe-clip')
+        .append('path')
+        .attr('d', path);
 
-        window.addEventListener("resize", () => {
-            location.reload();
+    // Voronoi cells
+    var voronoi = d3.geoVoronoi()
+        .x(function (d) { return d.lon; })
+        .y(function (d) { return d.lat; });
+    cells = voronoi(stations).polygons();
+
+    var tooltip  = d3.select('#map-tooltip');
+    var container = document.getElementById('map-container');
+
+    svg.append('g')
+        .attr('clip-path', 'url(#swe-clip)')
+        .selectAll('path')
+        .data(cells.features)
+        .enter()
+        .append('path')
+        .attr('d', path)
+        .style('fill', function (d, i) { return colorScale(stations[i].val); })
+        .style('stroke', 'rgba(255,255,255,0.32)')
+        .style('stroke-width', 0.5)
+        .style('cursor', 'pointer')
+        .on('mouseover', function (event, d) {
+          var i = cells.features.indexOf(d);
+          var stn = stations[i];
+          d3.select(this)
+              .style('stroke', 'rgba(255,255,255,0.9)')
+              .style('stroke-width', 2);
+          if (!pinnedStation) { showPanel(stn); }
+          tooltip.style('display', 'block')
+              .html('<strong>' + stn.station + '</strong>' +
+                    '<span class="tv">' + stn.val.toFixed(1) + ' °C</span>');
+        })
+        .on('mousemove', function (event) {
+          var rect = container.getBoundingClientRect();
+          tooltip
+              .style('left', (event.clientX - rect.left + 14) + 'px')
+              .style('top',  (event.clientY - rect.top  + 14) + 'px');
+        })
+        .on('mouseout', function () {
+          d3.select(this)
+              .style('stroke', 'rgba(255,255,255,0.32)')
+              .style('stroke-width', 0.5);
+          tooltip.style('display', 'none');
+          if (!pinnedStation) { clearPanel(); }
+        })
+        .on('click', function (event, d) {
+          var i = cells.features.indexOf(d);
+          pinnedStation = stations[i];
+          showPanel(stations[i]);
         });
-    });
-});
-</script>
 
+    // Country border on top
+    svg.append('g').selectAll('path')
+        .data(geojson_swe.features)
+        .join('path')
+        .attr('d', path)
+        .style('fill', 'none')
+        .style('stroke', '#7a8fa8')
+        .style('stroke-width', 1);
+  }
+
+  // ── Station detail panel ──────────────────────────────────────────────────
+  function showPanel(stn) {
+    var color = colorScale(stn.val);
+    document.getElementById('station-detail').innerHTML =
+      '<div class="stn-name">' + stn.station + '</div>' +
+      '<div class="stn-temp" style="color:' + color + '">' +
+        stn.val.toFixed(1) + '<span class="unit">&thinsp;°C</span>' +
+      '</div>' +
+      '<div class="stn-coords">' +
+        'Lat&nbsp; ' + stn.lat.toFixed(4) + '&thinsp;°N<br>' +
+        'Lon&nbsp; ' + stn.lon.toFixed(4) + '&thinsp;°E' +
+      '</div>';
+  }
+
+  function clearPanel() {
+    document.getElementById('station-detail').innerHTML =
+      '<div class="placeholder-msg">Hover a region to preview<br>click to pin details</div>';
+  }
+
+  // ── Temperature distribution chart ────────────────────────────────────────
+  function buildDistChart(minVal, maxVal) {
+    var step  = 3;
+    var start = Math.floor(minVal / step) * step;
+    var end   = Math.ceil(maxVal  / step) * step;
+    var cats  = [];
+    var data  = [];
+
+    for (var t = start; t < end; t += step) {
+      var count = stations.filter(function (s) {
+        return s.val >= t && s.val < t + step;
+      }).length;
+      cats.push(t + '–' + (t + step) + '°');
+      data.push({ y: count, color: colorScale(t + step / 2) });
+    }
+
+    Highcharts.chart('dist-chart', {
+      chart: {
+        type: 'column',
+        height: 190,
+        backgroundColor: 'transparent',
+        margin: [8, 4, 32, 28],
+        animation: false
+      },
+      title:   { text: null },
+      legend:  { enabled: false },
+      credits: { enabled: false },
+      xAxis: {
+        categories: cats,
+        labels: {
+          style: { fontSize: '9px', color: '#64748b' },
+          rotation: -30
+        },
+        lineColor: '#dde3ed',
+        tickColor: 'transparent'
+      },
+      yAxis: {
+        title: { text: null },
+        gridLineColor: '#f0f4f8',
+        labels: { style: { fontSize: '9px', color: '#64748b' } },
+        allowDecimals: false
+      },
+      tooltip: {
+        headerFormat: '',
+        pointFormat: '<b>{point.y}</b> stations {point.x}'
+      },
+      series: [{
+        name: 'Stations',
+        colorByPoint: true,
+        borderWidth: 0,
+        borderRadius: 3,
+        data: data
+      }],
+      plotOptions: {
+        column: { pointPadding: 0.04, groupPadding: 0.01 }
+      }
+    });
+  }
+
+  // ── Bootstrap: fetch data and render ─────────────────────────────────────
+  $(document).ready(function () {
+    $.when(
+      $.get('clover/files/weather.json'),
+      $.get('clover/files/se.json')
+    ).done(function (weatherRes, seRes) {
+      var weatherData = weatherRes[0];
+      var seData      = seRes[0];
+
+      if (!('temp' in weatherData)) {
+        document.getElementById('updated-time').textContent = 'No data available';
+        return;
+      }
+
+      var pts = processStations(weatherData, 'temp');
+      geojson_swe = topojson.feature(seData, seData.objects.subunits);
+      stations    = pts.stns;
+      colorScale  = d3.scaleSequential()
+          .interpolator(d3.interpolateRdYlBu)
+          .domain([pts.max, pts.min]);
+
+      populateStats(pts);
+      renderMap();
+      buildDistChart(pts.min, pts.max);
+
+      var resizeTimer;
+      window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(renderMap, 120);
+      });
+    }).fail(function () {
+      document.getElementById('updated-time').textContent = 'Failed to load data';
+    });
+  });
+
+})();
+</script>
 
 </body>
 </html>
